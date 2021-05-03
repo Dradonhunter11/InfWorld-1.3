@@ -34,6 +34,13 @@ namespace InfWorld
 
         public static InfWorld Instance;
 
+        public override void PostSetupContent()
+        {
+
+
+            base.PostSetupContent();
+        }
+
         public override void Load()
         {
             DirectoryInfo di = new DirectoryInfo("MonoModDump");
@@ -47,11 +54,22 @@ namespace InfWorld
             //ILPatching.Load();
             Instance = this;
             IlPatching.Load();
-            MassPatcher.StartPatching();
+            MassPatcher.StartPatching(typeof(Main));
             InitMonoModDumps();
 
-            
             DisableMonoModDumps();
+            // To do : Multithreading
+            //foreach (var mod in ModLoader.Mods)
+            //{
+            //    if (mod.Name == "ModLoader" || mod.Name == "InfWorld")
+            //        continue;
+            //    MassPatcher.StartPatching(mod.GetType().Assembly);
+            //}
+        }
+
+        public override void PostAddRecipes()
+        {
+
         }
 
         public static void InitMonoModDumps()
@@ -437,13 +455,9 @@ namespace InfWorld
                             i => i.MatchLdsfld(out _)))
                         {
                             int initPoint = cursor.Index;
-                            ILog log = LogManager.GetLogger("VanillaAI debug");
-                            log.Debug("Entrypoint found");
-                            log.Debug($"Current instruction : [{cursor.Previous.Offset}] {cursor.Previous.OpCode.Name} {cursor.Previous.Operand}");
                             if (cursor.TryGotoNext(i => i.MatchLdsfld(typeof(Main), nameof(Main.maxTilesY)),
                                 i => i.MatchStloc(out _)))
                             {
-                                log.Debug("Pattern found");
                                 cursor.Index += 2;
                                 int afterPoint = cursor.Index;
                                 var instruction = cursor.Next;
@@ -576,6 +590,30 @@ namespace InfWorld
                         }
                     }
                 };
+                IL.Terraria.Main.DrawBlack += il =>
+                {
+
+                    var cursor = new ILCursor(il);
+                    if (cursor.TryGotoNext(i => i.MatchLdloc(out _),
+                        i => i.MatchLdcI4(out _),
+                        i => i.MatchBge(out _),
+                        i => i.MatchLdloc(out _),
+                        i => i.MatchStloc(out _),
+                        i => i.MatchLdloc(out _),
+                        i => i.MatchLdsfld(out _)))
+                    {
+                        int initPoint = cursor.Index;
+                        if (cursor.TryGotoNext(i => i.MatchLdarg(out _),
+                            i => i.MatchBrtrue(out _)))
+                        {
+                            int afterPoint = cursor.Index;
+                            var instruction = cursor.Next;
+                            cursor.Index = initPoint;
+                            cursor.Emit(OpCodes.Br, instruction);
+                            cursor.Index = afterPoint + 1;
+                        }
+                    }
+                };
             }
         }
 
@@ -615,10 +653,14 @@ namespace InfWorld
                 return type.GetMethods(flags);
             }
 
-            public static void StartPatching()
+            public static void StartPatching(Type sourceType)
+            {
+                StartPatching(sourceType.Assembly);
+            }
+
+            public static void StartPatching(Assembly asm)
             {
                 ILog log = LogManager.GetLogger("Mass Patcher");
-                var asm = Assembly.GetAssembly(typeof(Main));
 
                 Type[] array = GetAllTypeInCurrentAssembly(asm);
                 for (int i = 0; i < array.Length; i++)
