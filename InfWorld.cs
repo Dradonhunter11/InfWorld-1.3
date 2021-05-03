@@ -49,7 +49,7 @@ namespace InfWorld
             IlPatching.Load();
             MassPatcher.StartPatching();
             InitMonoModDumps();
-            
+
             IL.Terraria.Player.Update += il =>
             {
                 var cursor = new ILCursor(il);
@@ -80,14 +80,14 @@ namespace InfWorld
                             Console.WriteLine(Player.tileTargetY);
                         });
                         cursor.Index += 4;
-                        
+
                         LogManager.GetLogger("Update Player").Debug($"Current instruction : [{cursor.Next.OpCode.Name}] {cursor.Next.OpCode.Name} {cursor.Next.Operand}");
                         cursor.Index = indexCursor;
                         cursor.Emit(OpCodes.Br, jumpPoint);
                         LogManager.GetLogger("Update Player").Debug($"Jumppoint instruction : [{jumpPoint.OpCode.Code}] {jumpPoint.OpCode.Name} {jumpPoint.Operand}");
                         LogManager.GetLogger("Update Player").Debug($"Current instruction : [{cursor.Next.OpCode.Code}] {cursor.Next.OpCode.Name} {cursor.Next.Operand}");
                         LogManager.GetLogger("Update Player").Debug("Success!");
-                        
+
                     }
                 }
             };
@@ -579,7 +579,7 @@ namespace InfWorld
 
             internal static bool SearchBoundOccurrenceWithoutNop(ILCursor cursor)
             {
-                
+
                 return true;
             }
         }
@@ -842,8 +842,8 @@ namespace InfWorld
                             }
                             //else if (reference.FullName.Contains("Terraria.Tile[0...,0...]"))
                             //{
-                                //ILog test = LogManager.GetLogger("Terraria.Tile detector");
-                                //test.Debug(reference.FullName);
+                            //ILog test = LogManager.GetLogger("Terraria.Tile detector");
+                            //test.Debug(reference.FullName);
                             //}
                         }
                         catch (Exception e)
