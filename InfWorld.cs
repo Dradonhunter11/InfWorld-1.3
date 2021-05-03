@@ -50,47 +50,7 @@ namespace InfWorld
             MassPatcher.StartPatching();
             InitMonoModDumps();
 
-            IL.Terraria.Player.Update += il =>
-            {
-                var cursor = new ILCursor(il);
-                int indexCursor = 0;
-                if (cursor.TryGotoNext(
-                    i => i.MatchLdsfld(typeof(Player), nameof(Player.tileTargetX)),
-                    i => i.MatchLdsfld(typeof(Main), nameof(Main.maxTilesX)),
-                    i => i.MatchLdcI4(5),
-                    i => i.MatchSub(),
-                    i => i.MatchBlt(out _)))
-                {
-                    LogManager.GetLogger("Update Player").Debug("Entrypoint found!");
-                    indexCursor = cursor.Index;
-                    if (cursor.TryGotoNext(
-                        i => i.MatchLdsfld(out _),
-                        i => i.MatchLdsfld(out _),
-                        i => i.MatchLdcI4(out _),
-                        i => i.MatchSub(),
-                        i => i.MatchLdsfld(out _)))
-                    {
-                        var jumpPoint = cursor.Next;
-                        cursor.Index++;
-                        cursor.EmitDelegate<Action>(() =>
-                        {
-                            Player.tileTargetX = (int)(((float)Main.mouseX + Main.screenPosition.X) / 16f);
-                            Player.tileTargetY = (int)(((float)Main.mouseY + Main.screenPosition.Y) / 16f);
-                            Console.WriteLine(Player.tileTargetX);
-                            Console.WriteLine(Player.tileTargetY);
-                        });
-                        cursor.Index += 4;
-
-                        LogManager.GetLogger("Update Player").Debug($"Current instruction : [{cursor.Next.OpCode.Name}] {cursor.Next.OpCode.Name} {cursor.Next.Operand}");
-                        cursor.Index = indexCursor;
-                        cursor.Emit(OpCodes.Br, jumpPoint);
-                        LogManager.GetLogger("Update Player").Debug($"Jumppoint instruction : [{jumpPoint.OpCode.Code}] {jumpPoint.OpCode.Name} {jumpPoint.Operand}");
-                        LogManager.GetLogger("Update Player").Debug($"Current instruction : [{cursor.Next.OpCode.Code}] {cursor.Next.OpCode.Name} {cursor.Next.Operand}");
-                        LogManager.GetLogger("Update Player").Debug("Success!");
-
-                    }
-                }
-            };
+            
             DisableMonoModDumps();
         }
 
@@ -116,8 +76,8 @@ namespace InfWorld
             {
                 if (!Environment.Is64BitProcess)
                 {
-                    /*throw new Exception(
-                        "Infinite world cannot be loaded on 32bit tML, pls use the 64bit version of tML to load this mod.");*/
+                    throw new Exception(
+                        "Infinite world cannot be loaded on 32bit tML, pls use the 64bit version of tML to load this mod.");
                 }
                 On.Terraria.WorldGen.clearWorld += delegate (On.Terraria.WorldGen.orig_clearWorld orig) { return; };
                 On.Terraria.Main.ClampScreenPositionToWorld += orig =>
@@ -403,6 +363,24 @@ namespace InfWorld
                 On.Terraria.Player.BordersMovement += (orig, self) => { return; };
                 On.Terraria.WorldGen.InWorld += (orig, i, i1, fluff) => { return true; };
                 On.Terraria.Collision.InTileBounds += (orig, i, i1, lx, ly, hx, hy) => { return true; };
+                On.Terraria.Collision.SolidTiles += (orig, x, endX, y, endY) =>
+                {
+
+                    for (int i = x; i < endX + 1; i++)
+                    {
+                        for (int j = y; j < endY + 1; j++)
+                        {
+                            if (InfWorld.Tile[i, j] == null)
+                                return false;
+
+                            if (InfWorld.Tile[i, j].active() && !InfWorld.Tile[i, j].inActive() &&
+                                Main.tileSolid[InfWorld.Tile[i, j].type] && !Main.tileSolidTop[InfWorld.Tile[i, j].type])
+                                return true;
+                        }
+                    }
+
+                    return false;
+                };
                 IL.Terraria.Main.DrawTiles += il =>
                 {
                     var cursor = new ILCursor(il);
@@ -557,30 +535,47 @@ namespace InfWorld
                         cursor.Emit(OpCodes.Br, jumpPoint);
                     }
                 };
-                On.Terraria.Collision.SolidTiles += (orig, x, endX, y, endY) =>
+                IL.Terraria.Player.Update += il =>
                 {
-
-                    for (int i = x; i < endX + 1; i++)
+                    var cursor = new ILCursor(il);
+                    int indexCursor = 0;
+                    if (cursor.TryGotoNext(
+                        i => i.MatchLdsfld(typeof(Player), nameof(Player.tileTargetX)),
+                        i => i.MatchLdsfld(typeof(Main), nameof(Main.maxTilesX)),
+                        i => i.MatchLdcI4(5),
+                        i => i.MatchSub(),
+                        i => i.MatchBlt(out _)))
                     {
-                        for (int j = y; j < endY + 1; j++)
+                        LogManager.GetLogger("Update Player").Debug("Entrypoint found!");
+                        indexCursor = cursor.Index;
+                        if (cursor.TryGotoNext(
+                            i => i.MatchLdsfld(out _),
+                            i => i.MatchLdsfld(out _),
+                            i => i.MatchLdcI4(out _),
+                            i => i.MatchSub(),
+                            i => i.MatchLdsfld(out _)))
                         {
-                            if (InfWorld.Tile[i, j] == null)
-                                return false;
+                            var jumpPoint = cursor.Next;
+                            cursor.Index++;
+                            cursor.EmitDelegate<Action>(() =>
+                            {
+                                Player.tileTargetX = (int)(((float)Main.mouseX + Main.screenPosition.X) / 16f);
+                                Player.tileTargetY = (int)(((float)Main.mouseY + Main.screenPosition.Y) / 16f);
+                                Console.WriteLine(Player.tileTargetX);
+                                Console.WriteLine(Player.tileTargetY);
+                            });
+                            cursor.Index += 4;
 
-                            if (InfWorld.Tile[i, j].active() && !InfWorld.Tile[i, j].inActive() &&
-                                Main.tileSolid[InfWorld.Tile[i, j].type] && !Main.tileSolidTop[InfWorld.Tile[i, j].type])
-                                return true;
+                            LogManager.GetLogger("Update Player").Debug($"Current instruction : [{cursor.Next.OpCode.Name}] {cursor.Next.OpCode.Name} {cursor.Next.Operand}");
+                            cursor.Index = indexCursor;
+                            cursor.Emit(OpCodes.Br, jumpPoint);
+                            LogManager.GetLogger("Update Player").Debug($"Jumppoint instruction : [{jumpPoint.OpCode.Code}] {jumpPoint.OpCode.Name} {jumpPoint.Operand}");
+                            LogManager.GetLogger("Update Player").Debug($"Current instruction : [{cursor.Next.OpCode.Code}] {cursor.Next.OpCode.Name} {cursor.Next.Operand}");
+                            LogManager.GetLogger("Update Player").Debug("Success!");
+
                         }
                     }
-
-                    return false;
                 };
-            }
-
-            internal static bool SearchBoundOccurrenceWithoutNop(ILCursor cursor)
-            {
-
-                return true;
             }
         }
 
