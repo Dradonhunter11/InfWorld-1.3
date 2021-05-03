@@ -22,6 +22,7 @@ namespace InfWorld.Chunks
 		internal static int HighestLevel = 300;
 
 		public bool Loaded = false;
+        public bool Generated = false;
 
 		/// <summary>
 		/// The list of tiles
@@ -46,6 +47,7 @@ namespace InfWorld.Chunks
 
 		public void Generate(int x, int y)
         {
+			if(Generated) return; // temp
             float[] freq = { 0.077f, 0.1f, 0.2f };
 			float[] limit = { 0.3f, 0.05f, 0.02f };
 			int[][] displacements = new int[freq.Length][];

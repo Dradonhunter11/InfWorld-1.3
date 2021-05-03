@@ -49,102 +49,46 @@ namespace InfWorld
             IlPatching.Load();
             MassPatcher.StartPatching();
             InitMonoModDumps();
-            IL.Terraria.Projectile.VanillaAI += il =>
+            
+            IL.Terraria.Player.Update += il =>
             {
                 var cursor = new ILCursor(il);
-                for (int nmbloop = 0; nmbloop < 3; nmbloop++)
+                int indexCursor = 0;
+                if (cursor.TryGotoNext(
+                    i => i.MatchLdsfld(typeof(Player), nameof(Player.tileTargetX)),
+                    i => i.MatchLdsfld(typeof(Main), nameof(Main.maxTilesX)),
+                    i => i.MatchLdcI4(5),
+                    i => i.MatchSub(),
+                    i => i.MatchBlt(out _)))
                 {
-
-                    if (cursor.TryGotoNext(i => i.MatchLdloc(out _),
+                    LogManager.GetLogger("Update Player").Debug("Entrypoint found!");
+                    indexCursor = cursor.Index;
+                    if (cursor.TryGotoNext(
+                        i => i.MatchLdsfld(out _),
+                        i => i.MatchLdsfld(out _),
                         i => i.MatchLdcI4(out _),
-                        i => i.MatchBge(out _),
-                        i => i.MatchLdcI4(out _),
-                        i => i.MatchStloc(out _),
-                        i => i.MatchLdloc(out _),
+                        i => i.MatchSub(),
                         i => i.MatchLdsfld(out _)))
                     {
-                        int initPoint = cursor.Index;
-                        ILog log = LogManager.GetLogger("VanillaAI debug");
-                        log.Debug("Entrypoint found");
-                        log.Debug($"Current instruction : [{cursor.Previous.Offset}] {cursor.Previous.OpCode.Name} {cursor.Previous.Operand}");
-                        if (cursor.TryGotoNext(i => i.MatchLdsfld(typeof(Main), nameof(Main.maxTilesY)),
-                            i => i.MatchStloc(out _)))
+                        var jumpPoint = cursor.Next;
+                        cursor.Index++;
+                        cursor.EmitDelegate<Action>(() =>
                         {
-                            log.Debug("Pattern found");
-                            cursor.Index += 2;
-                            int afterPoint = cursor.Index;
-                            var instruction = cursor.Next;
-                            cursor.Index = initPoint;
-                            cursor.Emit(OpCodes.Br, instruction);
-                            cursor.Index = afterPoint + 1;
-                        }
+                            Player.tileTargetX = (int)(((float)Main.mouseX + Main.screenPosition.X) / 16f);
+                            Player.tileTargetY = (int)(((float)Main.mouseY + Main.screenPosition.Y) / 16f);
+                            Console.WriteLine(Player.tileTargetX);
+                            Console.WriteLine(Player.tileTargetY);
+                        });
+                        cursor.Index += 4;
+                        
+                        LogManager.GetLogger("Update Player").Debug($"Current instruction : [{cursor.Next.OpCode.Name}] {cursor.Next.OpCode.Name} {cursor.Next.Operand}");
+                        cursor.Index = indexCursor;
+                        cursor.Emit(OpCodes.Br, jumpPoint);
+                        LogManager.GetLogger("Update Player").Debug($"Jumppoint instruction : [{jumpPoint.OpCode.Code}] {jumpPoint.OpCode.Name} {jumpPoint.Operand}");
+                        LogManager.GetLogger("Update Player").Debug($"Current instruction : [{cursor.Next.OpCode.Code}] {cursor.Next.OpCode.Name} {cursor.Next.Operand}");
+                        LogManager.GetLogger("Update Player").Debug("Success!");
+                        
                     }
-                }
-            };
-            IL.Terraria.Projectile.Kill += il =>
-            {
-                var cursor = new ILCursor(il);
-                for (int nmbloop = 0; nmbloop < 3; nmbloop++)
-                {
-
-                    if (cursor.TryGotoNext(i => i.MatchNop(), 
-                        i => i.MatchNop(), 
-                        i => i.MatchLdloc(out _),
-                        i => i.MatchNop(),
-                        i => i.MatchNop(),
-                        i => i.MatchLdcI4(out _),
-                        i => i.MatchBge(out _),
-                        i => i.MatchLdcI4(out _),
-                        i => i.MatchStloc(out _),
-                        i => i.MatchNop(),
-                        i => i.MatchNop(),
-                        i => i.MatchLdloc(out _),
-                        i => i.MatchNop(),
-                        i => i.MatchNop(),
-                        i => i.MatchLdsfld(out _),
-                        i => i.MatchBle(out _)))
-                    {
-                        int initPoint = cursor.Index;
-                        ILog log = LogManager.GetLogger("VanillaAI debug");
-                        log.Debug("Entrypoint found");
-                        log.Debug($"Current instruction : [{cursor.Previous.Offset}] {cursor.Previous.OpCode.Name} {cursor.Previous.Operand}");
-                        if (cursor.TryGotoNext(i => i.MatchLdsfld(typeof(Main), nameof(Main.maxTilesY)),
-                            i => i.MatchStloc(out _)))
-                        {
-                            log.Debug("Pattern found");
-                            cursor.Index += 2;
-                            int afterPoint = cursor.Index;
-                            var instruction = cursor.Next;
-                            cursor.Index = initPoint;
-                            cursor.Emit(OpCodes.Br, instruction);
-                            cursor.Index = afterPoint + 1;
-                        }
-                    }
-                }
-            };
-            IL.Terraria.WorldGen.KillTile += il =>
-            {
-                var cursor = new ILCursor(il);
-
-                if (cursor.TryGotoNext(i => i.MatchRet()))
-                {
-                    var jumpPoint = cursor.Next.Next;
-                    cursor.Index = 0;
-                    cursor.Emit(OpCodes.Br, jumpPoint);
-                }
-            };
-            IL.Terraria.WorldGen.KillWall += il =>
-            {
-                var cursor = new ILCursor(il);
-
-                if (cursor.TryGotoNext(i => i.MatchRet()))
-                {
-                    ILog log = LogManager.GetLogger("VanillaAI debug");
-                    log.Debug("Entrypoint found");
-                    log.Debug($"Current instruction : [{cursor.Previous.Offset}] {cursor.Previous.OpCode.Name} {cursor.Previous.Operand}");
-                    var jumpPoint = cursor.Next.Next;
-                    cursor.Index = 0;
-                    cursor.Emit(OpCodes.Br, jumpPoint);
                 }
             };
             DisableMonoModDumps();
@@ -458,6 +402,7 @@ namespace InfWorld
                 };
                 On.Terraria.Player.BordersMovement += (orig, self) => { return; };
                 On.Terraria.WorldGen.InWorld += (orig, i, i1, fluff) => { return true; };
+                On.Terraria.Collision.InTileBounds += (orig, i, i1, lx, ly, hx, hy) => { return true; };
                 IL.Terraria.Main.DrawTiles += il =>
                 {
                     var cursor = new ILCursor(il);
@@ -499,34 +444,117 @@ namespace InfWorld
                         cursor.Emit(OpCodes.Br, jumpPoint);
                     }
                 };
-                IL.Terraria.Player.Update += il =>
+                IL.Terraria.Projectile.VanillaAI += il =>
                 {
                     var cursor = new ILCursor(il);
-                    int indexCursor = 0;
-                    if (cursor.TryGotoNext(
-                        i => i.MatchLdsfld(out _),
-                        i => i.MatchLdsfld(out _),
-                        i => i.MatchLdcI4(out _),
-                        i => i.MatchSub(),
-                        i => i.MatchBlt(out _)))
+                    for (int nmbloop = 0; nmbloop < 3; nmbloop++)
                     {
-                        indexCursor = cursor.Index;
-                    }
 
-                    if (indexCursor != 0)
-                    {
-                        if (cursor.TryGotoNext(
-                            i => i.MatchLdsfld(out _),
-                            i => i.MatchLdsfld(out _),
+                        if (cursor.TryGotoNext(i => i.MatchLdloc(out _),
                             i => i.MatchLdcI4(out _),
-                            i => i.MatchSub(),
-                            i => i.MatchLdsfld(out _),
-                            i => i.MatchCall(out _)))
+                            i => i.MatchBge(out _),
+                            i => i.MatchLdcI4(out _),
+                            i => i.MatchStloc(out _),
+                            i => i.MatchLdloc(out _),
+                            i => i.MatchLdsfld(out _)))
                         {
-                            var jumpPoint = cursor.Next;
-                            cursor.Index = indexCursor;
-                            cursor.Emit(OpCodes.Br, jumpPoint);
+                            int initPoint = cursor.Index;
+                            ILog log = LogManager.GetLogger("VanillaAI debug");
+                            log.Debug("Entrypoint found");
+                            log.Debug($"Current instruction : [{cursor.Previous.Offset}] {cursor.Previous.OpCode.Name} {cursor.Previous.Operand}");
+                            if (cursor.TryGotoNext(i => i.MatchLdsfld(typeof(Main), nameof(Main.maxTilesY)),
+                                i => i.MatchStloc(out _)))
+                            {
+                                log.Debug("Pattern found");
+                                cursor.Index += 2;
+                                int afterPoint = cursor.Index;
+                                var instruction = cursor.Next;
+                                cursor.Index = initPoint;
+                                cursor.Emit(OpCodes.Br, instruction);
+                                cursor.Index = afterPoint + 1;
+                            }
                         }
+                    }
+                };
+                IL.Terraria.Projectile.Kill += il =>
+                {
+                    var cursor = new ILCursor(il);
+                    for (int nmbloop = 0; nmbloop < 3; nmbloop++)
+                    {
+
+                        if (cursor.TryGotoNext(i => i.MatchNop(),
+                            i => i.MatchNop(),
+                            i => i.MatchLdloc(out _),
+                            i => i.MatchNop(),
+                            i => i.MatchNop(),
+                            i => i.MatchLdcI4(out _),
+                            i => i.MatchBge(out _),
+                            i => i.MatchLdcI4(out _),
+                            i => i.MatchStloc(out _),
+                            i => i.MatchNop(),
+                            i => i.MatchNop(),
+                            i => i.MatchLdloc(out _),
+                            i => i.MatchNop(),
+                            i => i.MatchNop(),
+                            i => i.MatchLdsfld(out _),
+                            i => i.MatchBle(out _)))
+                        {
+                            int initPoint = cursor.Index;
+                            ILog log = LogManager.GetLogger("VanillaAI debug");
+                            log.Debug("Entrypoint found");
+                            log.Debug($"Current instruction : [{cursor.Previous.Offset}] {cursor.Previous.OpCode.Name} {cursor.Previous.Operand}");
+                            if (cursor.TryGotoNext(i => i.MatchLdsfld(typeof(Main), nameof(Main.maxTilesY)),
+                                i => i.MatchStloc(out _)))
+                            {
+                                log.Debug("Pattern found");
+                                cursor.Index += 2;
+                                int afterPoint = cursor.Index;
+                                var instruction = cursor.Next;
+                                cursor.Index = initPoint;
+                                cursor.Emit(OpCodes.Br, instruction);
+                                cursor.Index = afterPoint + 1;
+                            }
+                        }
+                    }
+                };
+                IL.Terraria.WorldGen.KillTile += il =>
+                {
+                    var cursor = new ILCursor(il);
+
+                    if (cursor.TryGotoNext(i => i.MatchRet()))
+                    {
+                        var jumpPoint = cursor.Next.Next;
+                        cursor.Index = 0;
+                        cursor.Emit(OpCodes.Br, jumpPoint);
+                    }
+                };
+                IL.Terraria.WorldGen.KillWall += il =>
+                {
+                    var cursor = new ILCursor(il);
+
+                    if (cursor.TryGotoNext(i => i.MatchRet()))
+                    {
+                        ILog log = LogManager.GetLogger("VanillaAI debug");
+                        log.Debug("Entrypoint found");
+                        log.Debug($"Current instruction : [{cursor.Previous.Offset}] {cursor.Previous.OpCode.Name} {cursor.Previous.Operand}");
+                        var jumpPoint = cursor.Next.Next;
+                        cursor.Index = 0;
+                        cursor.Emit(OpCodes.Br, jumpPoint);
+                    }
+                };
+                IL.Terraria.WorldGen.CanKillTile_int_int_refBoolean += il =>
+                {
+                    var cursor = new ILCursor(il);
+
+                    if (cursor.TryGotoNext(i => i.MatchRet()))
+                    {
+                        ILog log = LogManager.GetLogger("VanillaAI debug");
+                        log.Debug("Entrypoint found");
+                        log.Debug(
+                            $"Current instruction : [{cursor.Previous.Offset}] {cursor.Previous.OpCode.Name} {cursor.Previous.Operand}");
+                        var jumpPoint = cursor.Next.Next;
+                        cursor.Index = 3;
+                        cursor.Emit(OpCodes.Br, jumpPoint);
                     }
                 };
                 On.Terraria.Collision.SolidTiles += (orig, x, endX, y, endY) =>
@@ -784,7 +812,7 @@ namespace InfWorld
                                     BindingFlags.Public | BindingFlags.Static));
                             if (fieldRef.FullName.Contains("Terraria.Tile[0...,0...] Terraria.Main::tile") && instruction.OpCode == OpCodes.Ldsfld)
                             {
-                                InfWorld.Instance.Logger.Info("Tile reference detected");
+                                //InfWorld.Instance.Logger.Info("Tile reference detected");
                                 instruction.Operand = tileReference;
                                 instruction.OpCode = OpCodes.Ldsfld;
 
@@ -808,15 +836,15 @@ namespace InfWorld
                             }
                             else if (reference.FullName == ("System.Void Terraria.Tile[0...,0...]::Set(System.Int32,System.Int32,Terraria.Tile)") && instruction.OpCode == OpCodes.Call)
                             {
-                                InfWorld.Instance.Logger.Info("Tile.Set(x, y) reference detected");
+                                //InfWorld.Instance.Logger.Info("Tile.Set(x, y) reference detected");
                                 instruction.OpCode = OpCodes.Callvirt;
                                 instruction.Operand = setItemReference;
                             }
-                            else if (reference.FullName.Contains("Terraria.Tile[0...,0...]"))
-                            {
-                                ILog test = LogManager.GetLogger("Terraria.Tile detector");
-                                test.Debug(reference.FullName);
-                            }
+                            //else if (reference.FullName.Contains("Terraria.Tile[0...,0...]"))
+                            //{
+                                //ILog test = LogManager.GetLogger("Terraria.Tile detector");
+                                //test.Debug(reference.FullName);
+                            //}
                         }
                         catch (Exception e)
                         {
