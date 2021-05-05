@@ -62,12 +62,12 @@ namespace InfWorld
 
             DisableMonoModDumps();
             // To do : Multithreading/Optimize cause 9 min loading thorium is painful
-            /*foreach (var mod in ModLoader.Mods)
+            foreach (var mod in ModLoader.Mods)
             {
                 if (mod.Name == "ModLoader" || mod.Name == "InfWorld")
                     continue;
                 MassPatcher.StartPatching(mod.GetType().Assembly);
-            }*/
+            }
         }
 
         public override void PostAddRecipes()
@@ -95,17 +95,17 @@ namespace InfWorld
         {
             public override void WriteLine()
             {
-                
+
             }
 
             public override void WriteLine(string value)
             {
-                
+
             }
 
             public override void WriteLine(object value)
             {
-                
+
             }
 
             public override Encoding Encoding => Encoding.ASCII;
@@ -679,7 +679,7 @@ namespace InfWorld
             internal static MethodInfo[] GetAllMethodInAType(Type type)
             {
                 BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance |
-                                     BindingFlags.Static;
+                                     BindingFlags.Static | BindingFlags.DeclaredOnly;
                 return type.GetMethods(flags);
             }
 
@@ -697,12 +697,9 @@ namespace InfWorld
                 SetLoadingStatusText("Currently patching " + asm.FullName, 0);
                 for (int i = 0; i < array.Length; i++)
                 {
-                    Type typeInfo = array[i];
-                    MethodInfo[] array1 = GetAllMethodInAType(typeInfo);
-                    //ThreadPool.QueueUserWorkItem(PatchMethod, array1);
-                    Task task = Task.Run(() => PatchMethod(array1));
+                    Type type = array[i];
+                    Task task = Task.Run(() => PatchMethod(type));
                     tasks.Add(task);
-
                 }
 
                 Task.WaitAll(tasks.ToArray());
@@ -734,9 +731,9 @@ namespace InfWorld
                 definition.MainModule.Write(Environment.CurrentDirectory + "/tModLoaderPatched.exe");*/
             }
 
-            private static void PatchMethod(object state)
+            private static void PatchMethod(Type typeInfo)
             {
-                MethodInfo[] array1 = (MethodInfo[])state;
+                MethodInfo[] array1 = GetAllMethodInAType(typeInfo);
                 for (int i1 = 0; i1 < array1.Length; i1++)
                 {
                     try
