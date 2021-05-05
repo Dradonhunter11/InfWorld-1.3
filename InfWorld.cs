@@ -4,13 +4,16 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using InfWorld.Chunks;
 using log4net;
 using Microsoft.Xna.Framework;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
 using MonoMod.Cil;
+using MonoMod.RuntimeDetour;
 using MonoMod.RuntimeDetour.HookGen;
 using MonoMod.Utils;
 using Newtonsoft.Json.Linq;
@@ -58,13 +61,13 @@ namespace InfWorld
             InitMonoModDumps();
 
             DisableMonoModDumps();
-            // To do : Multithreading
-            //foreach (var mod in ModLoader.Mods)
-            //{
-            //    if (mod.Name == "ModLoader" || mod.Name == "InfWorld")
-            //        continue;
-            //    MassPatcher.StartPatching(mod.GetType().Assembly);
-            //}
+            // To do : Multithreading/Optimize cause 9 min loading thorium is painful
+            /*foreach (var mod in ModLoader.Mods)
+            {
+                if (mod.Name == "ModLoader" || mod.Name == "InfWorld")
+                    continue;
+                MassPatcher.StartPatching(mod.GetType().Assembly);
+            }*/
         }
 
         public override void PostAddRecipes()
@@ -88,10 +91,32 @@ namespace InfWorld
             Environment.SetEnvironmentVariable("MONOMOD_DMD_DUMP", "");
         }
 
+        internal class TextWriterTest : TextWriter
+        {
+            public override void WriteLine()
+            {
+                
+            }
+
+            public override void WriteLine(string value)
+            {
+                
+            }
+
+            public override void WriteLine(object value)
+            {
+                
+            }
+
+            public override Encoding Encoding => Encoding.ASCII;
+        }
+
         internal static class IlPatching
         {
             public static void Load()
             {
+                Console.SetOut(new TextWriterTest());
+
                 if (!Environment.Is64BitProcess)
                 {
                     throw new Exception(
@@ -641,6 +666,11 @@ namespace InfWorld
 
         internal static class MassPatcher
         {
+            private static ILHookConfig config = new ILHookConfig()
+            {
+                ManualApply = true
+            };
+
             internal static Type[] GetAllTypeInCurrentAssembly(Assembly asm)
             {
                 return asm.GetTypes();
@@ -660,40 +690,23 @@ namespace InfWorld
 
             public static void StartPatching(Assembly asm)
             {
+                List<Task> tasks = new List<Task>();
                 ILog log = LogManager.GetLogger("Mass Patcher");
 
                 Type[] array = GetAllTypeInCurrentAssembly(asm);
+                SetLoadingStatusText("Currently patching " + asm.FullName, 0);
                 for (int i = 0; i < array.Length; i++)
                 {
                     Type typeInfo = array[i];
                     MethodInfo[] array1 = GetAllMethodInAType(typeInfo);
-                    for (int i1 = 0; i1 < array1.Length; i1++)
-                    {
-                        MethodInfo methodInfo = array1[i1];
-                        try
-                        {
-                            log.Debug(methodInfo.Name);
-                            if (methodInfo.Name == "DrawTiles")
-                            {
-                                //InfWorld.InitMonoModDumps();
-                                log.Debug("Dump initiated");
-                            }
-                            if (methodInfo.Name == "do_playWorldCallBack")
-                                continue;
-                            SetLoadingStatusText("Currently patching " + typeInfo.FullName, i * 100 / array.Length);
-                            HookEndpointManager.Modify(methodInfo, new ILContext.Manipulator(IlEditing));
-                            if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MONOMOD_DMD_TYPE")))
-                            {
-                                //InfWorld.DisableMonoModDumps();
-                                log.Debug("Dump ended");
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            log.Error($"Failed to patch : {typeInfo.FullName}", e);
-                        }
-                    }
+                    //ThreadPool.QueueUserWorkItem(PatchMethod, array1);
+                    Task task = Task.Run(() => PatchMethod(array1));
+                    tasks.Add(task);
+
                 }
+
+                Task.WaitAll(tasks.ToArray());
+
                 /*
                 var flags = BindingFlags.NonPublic | BindingFlags.Static;
                 var resolver = (IAssemblyResolver)typeof(Main).Assembly.GetType("Terraria.ModLoader.Core.AssemblyManager").GetField("cecilAssemblyResolver", flags).GetValue(null);
@@ -720,6 +733,38 @@ namespace InfWorld
                 }
                 definition.MainModule.Write(Environment.CurrentDirectory + "/tModLoaderPatched.exe");*/
             }
+
+            private static void PatchMethod(object state)
+            {
+                MethodInfo[] array1 = (MethodInfo[])state;
+                for (int i1 = 0; i1 < array1.Length; i1++)
+                {
+                    try
+                    {
+                        MethodInfo methodInfo = array1[i1];
+                        if (methodInfo.Name == "do_playWorldCallBack")
+                            continue;
+                        HookEndpointManager.Modify(methodInfo, new ILContext.Manipulator(IlEditing));
+                        if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MONOMOD_DMD_TYPE")))
+                        {
+                            InfWorld.DisableMonoModDumps();
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                    }
+                }
+            }
+
+            private static void PatchModLoader(ILContext context)
+            {
+                ILCursor cursor = new ILCursor(context);
+                cursor.EmitDelegate<Action>(() =>
+                {
+                    Console.WriteLine(context.Method.Name);
+                });
+            }
+
             /*
             public static void PatchBinary()
             {
@@ -817,75 +862,58 @@ namespace InfWorld
 
             private static List<TypeDefinition> _definitions = new List<TypeDefinition>();
 
+            internal static PropertyInfo indexerInfo = typeof(Chunks.World).GetProperty("Item",
+                BindingFlags.Public | BindingFlags.Instance, null, typeof(Tile),
+                new Type[] { typeof(Int32), typeof(Int32) }, null);
+            internal static MethodInfo getItem = indexerInfo.GetGetMethod();
+            internal static MethodInfo setItem = indexerInfo.GetSetMethod();
+
             internal static void IlEditing(ILContext il)
             {
-                PropertyInfo indexerInfo = typeof(Chunks.World).GetProperty("Item",
-                    BindingFlags.Public | BindingFlags.Instance, null, typeof(Tile),
-                    new Type[] { typeof(Int32), typeof(Int32) }, null);
-                MethodReference getItemReference = il.Import(indexerInfo.GetGetMethod());
-                MethodReference setItemReference = il.Import(indexerInfo.GetSetMethod());
-
+                MethodReference getItemReference = null;
+                MethodReference setItemReference = null;
 
                 foreach (var instruction in il.Body.Instructions)
                 {
                     if (instruction.OpCode == OpCodes.Ldftn)
                     {
                         MethodReference function = (MethodReference)instruction.Operand;
-                        BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance |
-                                             BindingFlags.Static;
                         if (!function.Name.Contains(_blacklistLoadFnt[0]) && !function.Name.Contains(_blacklistLoadFnt[1]) && !function.Name.Contains(_blacklistLoadFnt[2]))
                         {
                             InfWorld.Instance.Logger.Info("Loadfnt detected : " + function.Name);
                             HookEndpointManager.Modify(function.ResolveReflection(), new ILContext.Manipulator(IlEditing));
                         }
                     }
-                    Object operandType = instruction.Operand;
-                    if (operandType != null && operandType is FieldReference fieldRef)
+                    else if (instruction.OpCode == OpCodes.Ldsfld)
                     {
-                        try
+                        if (instruction.Operand is FieldReference fieldRef && fieldRef.DeclaringType.FullName == "Terraria.Main" && fieldRef.Name == "tile")
                         {
                             FieldReference tileReference =
                                 il.Module.ImportReference(typeof(InfWorld).GetField("Tile",
                                     BindingFlags.Public | BindingFlags.Static));
-                            if (fieldRef.FullName.Contains("Terraria.Tile[0...,0...] Terraria.Main::tile") && instruction.OpCode == OpCodes.Ldsfld)
-                            {
-                                //InfWorld.Instance.Logger.Info("Tile reference detected");
-                                instruction.Operand = tileReference;
-                                instruction.OpCode = OpCodes.Ldsfld;
-
-                            }
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine(e);
+                            instruction.Operand = tileReference;
                         }
                     }
-
-                    if (instruction != null && instruction.Operand is Mono.Cecil.MethodReference reference)
+                    else if (instruction.OpCode == OpCodes.Call && instruction.Operand is Mono.Cecil.MethodReference reference)
                     {
-                        try
+                        if (reference.FullName == ("Terraria.Tile Terraria.Tile[0...,0...]::Get(System.Int32,System.Int32)"))
                         {
-                            if (reference.FullName == ("Terraria.Tile Terraria.Tile[0...,0...]::Get(System.Int32,System.Int32)") && instruction.OpCode == OpCodes.Call)
+                            instruction.OpCode = OpCodes.Callvirt;
+                            if (getItemReference == null)
                             {
-                                instruction.OpCode = OpCodes.Callvirt;
-                                instruction.Operand = getItemReference;
+                                getItemReference = il.Import(getItem);
+                            }
+                            instruction.Operand = getItemReference;
 
-                            }
-                            else if (reference.FullName == ("System.Void Terraria.Tile[0...,0...]::Set(System.Int32,System.Int32,Terraria.Tile)") && instruction.OpCode == OpCodes.Call)
-                            {
-                                //InfWorld.Instance.Logger.Info("Tile.Set(x, y) reference detected");
-                                instruction.OpCode = OpCodes.Callvirt;
-                                instruction.Operand = setItemReference;
-                            }
-                            //else if (reference.FullName.Contains("Terraria.Tile[0...,0...]"))
-                            //{
-                            //ILog test = LogManager.GetLogger("Terraria.Tile detector");
-                            //test.Debug(reference.FullName);
-                            //}
                         }
-                        catch (Exception e)
+                        else if (reference.FullName == ("System.Void Terraria.Tile[0...,0...]::Set(System.Int32,System.Int32,Terraria.Tile)"))
                         {
-                            Console.WriteLine(e);
+                            instruction.OpCode = OpCodes.Callvirt;
+                            if (setItemReference == null)
+                            {
+                                setItemReference = il.Import(setItem);
+                            }
+                            instruction.Operand = setItemReference;
                         }
                     }
                 }
