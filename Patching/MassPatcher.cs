@@ -18,22 +18,9 @@ namespace InfWorld.Patching
 {
     internal static class MassPatcher
     {
-        private static ILHookConfig config = new ILHookConfig()
-        {
-            ManualApply = true
-        };
-
-        internal static Type[] GetAllTypeInCurrentAssembly(Assembly asm)
-        {
-            return asm.GetTypes();
-        }
-
-        internal static MethodInfo[] GetAllMethodInAType(Type type)
-        {
-            BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance |
-                                 BindingFlags.Static | BindingFlags.DeclaredOnly;
-            return type.GetMethods(flags);
-        }
+        private const BindingFlags REQUIRED_FLAGS =
+            BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance |
+            BindingFlags.Static | BindingFlags.DeclaredOnly;
 
         public static void StartPatching(Type sourceType)
         {
@@ -45,7 +32,7 @@ namespace InfWorld.Patching
             List<Task> tasks = new List<Task>();
             ILog log = LogManager.GetLogger("Mass Patcher");
 
-            Type[] array = GetAllTypeInCurrentAssembly(asm);
+            Type[] array = asm.GetTypes();
             SetLoadingStatusText("Currently patching " + asm.FullName, 0);
             for (int i = 0; i < array.Length; i++)
             {
@@ -59,7 +46,7 @@ namespace InfWorld.Patching
 
         private static void PatchMethod(Type typeInfo)
         {
-            MethodInfo[] array1 = GetAllMethodInAType(typeInfo);
+            MethodInfo[] array1 = typeInfo.GetMethods(REQUIRED_FLAGS);
             for (int i1 = 0; i1 < array1.Length; i1++)
             {
                 try
