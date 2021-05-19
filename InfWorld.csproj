@@ -15,5 +15,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Debug\" />
+    <Folder Include="WorldGenerator\ChunkGenerator\" />
   </ItemGroup>
 </Project>
