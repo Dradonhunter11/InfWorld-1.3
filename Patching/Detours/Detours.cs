@@ -32,7 +32,5 @@ namespace InfWorld.Patching.Detours
             On.Terraria.Main.ClampScreenPositionToWorld += OnClampScreenPositionToWorld;
             On.Terraria.Player.BordersMovement += OnBordersMovement;
         }
-
-        
     }
 }
