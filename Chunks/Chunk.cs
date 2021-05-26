@@ -17,7 +17,7 @@ namespace InfWorld.Chunks
 		/// The size of every chunk
 		/// </summary>
 		public const int ChunkWidth = 200;
-        public const int ChunkHeight = 150;
+        public const int ChunkHeight = 200;
         public Vector2 position;
 
 		internal static Dictionary<int, int> SurfaceLevel;
@@ -68,11 +68,11 @@ namespace InfWorld.Chunks
 		/// </summary>
 		/// <param name="pos">Position of the tile to get</param>
 		/// <returns>The tile at the specified position</returns>
-		public Tile this[Vector2 pos]
+		/*public Tile this[Vector2 pos]
 		{
 			get => this[new Position2I(pos)];
 			set => this[new Position2I(pos)] = value;
-		}
+		}*/
 
 		/// <summary>
 		/// Get the tile at the specified position

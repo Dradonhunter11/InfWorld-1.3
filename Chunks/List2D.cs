@@ -52,16 +52,20 @@ namespace InfWorld.Chunks
 		/// </summary>
 		/// <param name="pos">Position of the value</param>
 		/// <returns>The value at the specified position</returns>
-		public T this[Vector2 pos] => this[new Position2I(pos)];
+		//public T this[Vector2 pos] => this[new Position2I(pos)];
 
 		/// <summary>
 		/// Get the value at the specified position
 		/// </summary>
 		/// <param name="pos">Position of the value</param>
 		/// <returns>The value at the specified position</returns>
-		public T this[Position2I pos] => this[pos.X, pos.Y];
+		public T this[Position2I pos]
+        {
+            get => this[pos.X, pos.Y];
+            set => this[pos.X, pos.Y] = value;
+        }
 
-		/// <summary>
+        /// <summary>
 		/// Get the value at the specified position
 		/// </summary>
 		/// <param name="x">X coordinate of the value</param>

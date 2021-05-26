@@ -16,7 +16,7 @@ namespace InfWorld.Patching.Detours
         {
             for (int i = 0; i < Main.maxTilesX; i++)
             {
-                LogManager.GetLogger("Line").Info(19 + $" {Main.maxTilesX}");
+                //LogManager.GetLogger("Line").Info(19 + $" {Main.maxTilesX}");
                 float num = (float)i / (float)Main.maxTilesX;
                 Main.statusText = Lang.gen[51].Value + " " + (int)((double)num * 100.0 + 1.0) + "%";
                 for (int j = 0; j < Main.maxTilesY; j++)
@@ -24,9 +24,9 @@ namespace InfWorld.Patching.Detours
                     int num2 = -1;
                     byte b;
                     byte b2 = b = 0;
-                    LogManager.GetLogger("Line").Info(26 + $" {InfWorld.Tile[i, j]}");
+                    //LogManager.GetLogger("Line").Info(26 + $" {InfWorld.Tile[i, j]}");
                     Tile t = new Tile();
-                    LogManager.GetLogger("Line").Info(28 + $" {t}");
+                    //LogManager.GetLogger("Line").Info(28 + $" {t}");
                     byte b3 = reader.ReadByte();
                     if ((b3 & 1) == 1)
                     {
@@ -152,9 +152,9 @@ namespace InfWorld.Patching.Detours
                         j++;
                         if (t != null)
                         {
-                            LogManager.GetLogger("Line").Info(155 + $" {InfWorld.Tile[i, j]} {t}");
-                            InfWorld.Tile[i, j] = new Tile();
-                            InfWorld.Tile[i, j].CopyFrom(t);
+                            //LogManager.GetLogger("155").Debug(InfWorld.Tile[i, j] + $"(X : {i} Y : {j})");
+                            //LogManager.GetLogger("156").Debug(t);
+                            //InfWorld.Tile[i, j].CopyFrom(t);
                         }
 
                         num3--;

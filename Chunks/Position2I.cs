@@ -36,7 +36,7 @@ namespace InfWorld.Chunks
 		/// Create a new instance of this class from a vector
 		/// </summary>
 		/// <param name="vector">The vector to copy the position from</param>
-		public Position2I(Vector2 vector) : this((int)Math.Round(vector.X), (int)Math.Round(vector.Y)) { }
+		public Position2I(double v, Vector2 vector) : this((int)Math.Round(vector.X), (int)Math.Round(vector.Y)) { }
 
 		/// <summary>
 		/// Convert this instance to a Vector2

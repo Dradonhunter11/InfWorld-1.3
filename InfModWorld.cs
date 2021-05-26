@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using InfWorld.Chunks;
 using Terraria;
@@ -12,16 +13,25 @@ namespace InfWorld
 {
     class InfModWorld : ModWorld
     {
-
+        public bool ThreadRunning = false;
 
         public override void PreUpdate()
         {
-            if(Main.netMode == NetmodeID.MultiplayerClient)
+            if (Main.netMode == NetmodeID.MultiplayerClient)
                 return;
 
-            if (Main.netMode == NetmodeID.SinglePlayer)
+            if (Main.netMode == NetmodeID.SinglePlayer && !ThreadRunning)
             {
-                InfWorld.Tile.Update(Main.LocalPlayer);
+                Thread thread = new Thread(() =>
+                {
+                    while (ThreadRunning)
+                    {
+                        InfWorld.Tile.Update(Main.LocalPlayer);
+                        Thread.Sleep(50);
+                    }
+                });
+                ThreadRunning = true;
+                thread.Start();
             }
         }
     }
