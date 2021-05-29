@@ -12,21 +12,22 @@ using Microsoft.Xna.Framework;
 namespace InfWorld.WorldGenerator.ChunkGenerator
 {
     class ChunkGenerator
-    {
+    { 
         private FastNoise noise;
 
         public ChunkGenerator(int seed = 1337)
         {
             noise = new FastNoise(seed);
-            noise.SetNoiseType(FastNoise.NoiseType.Perlin);
-            noise.SetFrequency(0.005f);
-            //noise.SetFractalType(FastNoise.FractalType.RigidMulti);
+            noise.SetNoiseType(FastNoise.NoiseType.Simplex);
+            noise.SetFractalType(FastNoise.FractalType.FBM);
+            noise.SetFrequency(0.05f);
+            noise.SetFractalLacunarity(5f);
         }
 
         /*public Tile[,] Generate()
         {
             bool[,] map = new bool[Chunk.ChunkWidth, Chunk.ChunkHeight];
-            for (int x = 0; x < Chunk.ChunkWidth; x++)
+            for (int x = 0; x < Chunk.ChunkWidth; x++) 
             {
                 float noiseX = x / 20f;
                 for (int y = 0; y < Chunk.ChunkHeight; y++)
@@ -65,8 +66,9 @@ namespace InfWorld.WorldGenerator.ChunkGenerator
 
         public Tile[,] Generate(int x1, int y1)
         {
-            float baseHeight = 75;
-            float smoothness = 75;
+            LogManager.GetLogger("Chunk gen").Debug($"Chunk internal position : {x1}, {y1}");
+            float baseHeight = 100;
+            float smoothness = 20;
             Tile[,] chunkBase = new Tile[Chunk.ChunkWidth, Chunk.ChunkHeight];
             for (int x = 0; x < Chunk.ChunkWidth; x++)
             {
@@ -76,7 +78,7 @@ namespace InfWorld.WorldGenerator.ChunkGenerator
                     tile.active(false);
                     chunkBase[x, y] = tile;
                 }
-                int height = (int)Math.Round((Chunk.ChunkHeight - 1 - baseHeight) * Noise2d.Noise((x / smoothness) + (x1 * Chunk.ChunkWidth), 0));
+                int height = (int)Math.Round((Chunk.ChunkHeight - 1 - baseHeight) * noise.GetNoise((x / smoothness) + (x1 * Chunk.ChunkWidth), 0));
                 //for (int y = Chunk.ChunkHeight - height - 1; y >= 0; y--)
                 for (int y = 0; y < height; y++)
                 { 
@@ -101,100 +103,6 @@ namespace InfWorld.WorldGenerator.ChunkGenerator
             }
 
             return chunkBase;
-        }
-
-        public static class Noise2d
-        {
-            private static Random _random = new Random();
-            private static int[] _permutation;
-
-            private static Vector2[] _gradients;
-
-            static Noise2d()
-            {
-                CalculatePermutation(out _permutation);
-                CalculateGradients(out _gradients);
-            }
-
-            private static void CalculatePermutation(out int[] p)
-            {
-                p = Enumerable.Range(0, 256).ToArray();
-
-                /// shuffle the array
-                for (var i = 0; i < p.Length; i++)
-                {
-                    var source = _random.Next(p.Length);
-
-                    var t = p[i];
-                    p[i] = p[source];
-                    p[source] = t;
-                }
-            }
-
-            /// <summary>
-            /// generate a new permutation.
-            /// </summary>
-            public static void Reseed()
-            {
-                CalculatePermutation(out _permutation);
-            }
-
-            private static void CalculateGradients(out Vector2[] grad)
-            {
-                grad = new Vector2[256];
-
-                for (var i = 0; i < grad.Length; i++)
-                {
-                    Vector2 gradient;
-
-                    do
-                    {
-                        gradient = new Vector2((float)(_random.NextDouble() * 2 - 1), (float)(_random.NextDouble() * 2 - 1));
-                    }
-                    while (gradient.LengthSquared() >= 1);
-
-                    gradient.Normalize();
-
-                    grad[i] = gradient;
-                }
-
-            }
-
-            private static float Drop(float t)
-            {
-                t = Math.Abs(t);
-                return 1f - t * t * t * (t * (t * 6 - 15) + 10);
-            }
-
-            private static float Q(float u, float v)
-            {
-                return Drop(u) * Drop(v);
-            }
-
-            public static float Noise(float x, float y)
-            {
-                var cell = new Vector2((float)Math.Floor(x), (float)Math.Floor(y));
-
-                var total = 0f;
-
-                var corners = new[] { new Vector2(0, 0), new Vector2(0, 1), new Vector2(1, 0), new Vector2(1, 1) };
-
-                foreach (var n in corners)
-                {
-                    var ij = cell + n;
-                    var uv = new Vector2(x - ij.X, y - ij.Y);
-
-                    var index = _permutation[(int)ij.X % _permutation.Length];
-                    index = _permutation[(index + (int)ij.Y) % _permutation.Length];
-
-                    var grad = _gradients[index % _gradients.Length];
-
-                    total += Q(uv.X, uv.Y) * Vector2.Dot(grad, uv);
-                }
-
-                return Math.Max(Math.Min(total, 1f), -1f);
-            }
-
         }
     }
 }
