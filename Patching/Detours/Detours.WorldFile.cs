@@ -16,6 +16,7 @@ namespace InfWorld.Patching.Detours
         {
             for (int i = 0; i < Main.maxTilesX; i++)
             {
+                
                 //LogManager.GetLogger("Line").Info(19 + $" {Main.maxTilesX}");
                 float num = (float)i / (float)Main.maxTilesX;
                 Main.statusText = Lang.gen[51].Value + " " + (int)((double)num * 100.0 + 1.0) + "%";
@@ -159,6 +160,14 @@ namespace InfWorld.Patching.Detours
 
                         num3--;
                     }
+                }
+            }
+
+            for (int i = 0; i < 4200; i++)
+            {
+                for (int j = 0; j < 1200; j++)
+                {
+                    if(InfWorld.Tile[i, j] != null) return;
                 }
             }
 

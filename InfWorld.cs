@@ -7,7 +7,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using InfWorld.Chunks;
+using InfWorld.Map;
 using InfWorld.Patching;
 using InfWorld.Patching.Detours;
 using InfWorld.Patching.ILPatches;
@@ -36,7 +36,8 @@ namespace InfWorld
     public class InfWorld : Mod
     {
 
-        public static World Tile = new World();
+        public static World.World Tile = new World.World();
+        public static WorldMap Map = new WorldMap();
 
         public static InfWorld Instance;
 
@@ -44,8 +45,7 @@ namespace InfWorld
         {
             if (!Environment.Is64BitProcess)
             {
-                throw new Exception(
-                    "Infinite world cannot be loaded on 32bit tML, pls use the 64bit version of tML to load this mod.");
+                //throw new Exception("Infinite world cannot be loaded on 32bit tML, pls use the 64bit version of tML to load this mod.");
             }
             DirectoryInfo di = new DirectoryInfo("MonoModDump");
             if (di.Exists)
@@ -60,21 +60,26 @@ namespace InfWorld
             IlPatching.Load();
             MassPatcher.StartPatching(typeof(Main));
             InitMonoModDumps();
-
             DisableMonoModDumps();
-            // To do : Multithreading/Optimize cause 9 min loading thorium is painful
             foreach (var mod in ModLoader.Mods)
             {
                 if (mod.Name == "ModLoader" || mod.Name == "InfWorld")
                     continue;
                 MassPatcher.StartPatching(mod.GetType().Assembly);
             }
+
+            Main.instance.Exiting += (sender, args) =>
+            {
+                Environment.Exit(0);
+            };
         }
 
         public override void PostAddRecipes()
         {
 
         }
+
+        
 
         public static void InitMonoModDumps()
         {

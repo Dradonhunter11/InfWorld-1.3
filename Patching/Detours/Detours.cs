@@ -30,6 +30,7 @@ namespace InfWorld.Patching.Detours
             On.Terraria.WorldGen.do_playWorldCallBack += OnDoPlayWorldCallBack;
             On.Terraria.IO.WorldFile.LoadWorldTiles += NewLoadWorldTiles;
             On.Terraria.Main.ClampScreenPositionToWorld += OnClampScreenPositionToWorld;
+            //On.Terraria.Main.DrawMap += OnDrawMap;
             On.Terraria.Player.BordersMovement += OnBordersMovement;
         }
     }

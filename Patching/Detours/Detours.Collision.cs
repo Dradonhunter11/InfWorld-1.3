@@ -30,12 +30,12 @@ namespace InfWorld.Patching.Detours
             return false;
         }
 
-        private static bool CustomSolidCollision(On.Terraria.Collision.orig_SolidCollision orig, Vector2 Position, int Width, int Height)
+        private static bool CustomSolidCollision(On.Terraria.Collision.orig_SolidCollision orig, Vector2 position, int width, int height)
         {
-            int value = (int)(Position.X / 16f) - 1;
-            int value2 = (int)((Position.X + (float)Width) / 16f) + 2;
-            int value3 = (int)(Position.Y / 16f) - 1;
-            int value4 = (int)((Position.Y + (float)Height) / 16f) + 2;
+            int value = (int)(position.X / 16f) - 1;
+            int value2 = (int)((position.X + (float)width) / 16f) + 2;
+            int value3 = (int)(position.Y / 16f) - 1;
+            int value4 = (int)((position.Y + (float)height) / 16f) + 2;
             /*int num = Utils.Clamp(value, 0, Main.maxTilesX - 1);
                 value2 = Utils.Clamp(value2, 0, Main.maxTilesX - 1);
                 value3 = Utils.Clamp(value3, 0, Main.maxTilesY - 1);
@@ -56,7 +56,7 @@ namespace InfWorld.Patching.Detours
                             num2 -= 8;
                         }
 
-                        if (Position.X + (float)Width > vector.X && Position.X < vector.X + 16f && Position.Y + (float)Height > vector.Y && Position.Y < vector.Y + (float)num2) return true;
+                        if (position.X + (float)width > vector.X && position.X < vector.X + 16f && position.Y + (float)height > vector.Y && position.Y < vector.Y + (float)num2) return true;
                     }
                 }
             }

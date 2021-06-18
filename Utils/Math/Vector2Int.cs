@@ -1,13 +1,13 @@
-﻿namespace InfWorld.Chunks
+﻿namespace InfWorld.Utils.Math
 {
 	class Vector2Int
 	{
 		public int X, Y;
 
-		public Vector2Int(int X, int Y)
+		public Vector2Int(int x, int y)
 		{
-			this.X = X;
-			this.Y = Y;
+			this.X = x;
+			this.Y = y;
 		}
 
 		public override bool Equals(object obj)

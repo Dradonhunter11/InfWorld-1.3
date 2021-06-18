@@ -1,11 +1,11 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Runtime.Serialization;
+using InfWorld.Utils;
+using InfWorld.Utils.Math;
 using Microsoft.Xna.Framework;
 using Terraria;
-using Terraria.ID;
 
-namespace InfWorld.Chunks
+namespace InfWorld.World.Region
 { 
     /// <summary>
 	/// A chunk of tiles in the world
@@ -16,12 +16,10 @@ namespace InfWorld.Chunks
 		/// <summary>
 		/// The size of every chunk
 		/// </summary>
-		public const int ChunkWidth = 200;
-        public const int ChunkHeight = 200;
-        public Vector2 position;
+		public static readonly int ChunkWidth = 200;
+        public static readonly int ChunkHeight = 200;
+        public Vector2 Position;
 
-		internal static Dictionary<int, int> SurfaceLevel;
-		internal static int HighestLevel = 300;
 
 		public bool Loaded = false;
         public bool Generated = false;
@@ -36,32 +34,22 @@ namespace InfWorld.Chunks
 		/// </summary>
 		public Chunk(Vector2 position, Tile[,] chunkData)
         {
-            this.position = position;
+            this.Position = position;
             m_tiles = new List2D<Tile>();
             for (int i = 0; i < ChunkWidth; i++)
             {
                 for (int j = 0; j < ChunkHeight; j++)
                 {
                     m_tiles[i, j] = chunkData[i, j];
+                    if (m_tiles[i, j] == null)
+                    {
+                        m_tiles[i, j] = new Tile();
+                        m_tiles[i, j].active(false);
+
+                    }
                 }
             }
         }
-
-		internal void Fill(int x, int startingY, int one, int depth, ushort tile)
-		{
-			for (int i = startingY; i < startingY + depth; i++)
-			{
-				WorldGen.PlaceTile(x, i, tile, false, true);
-			}
-		}
-
-		internal void FillAir(int x, int depth, int one, int startingY)
-		{
-			for (int i = startingY; i < startingY + depth; i++)
-			{
-				m_tiles[x, i].active(false);
-			}
-		}
 
         /// <summary>
 		/// Get the tile at the specified position

@@ -11,7 +11,7 @@ namespace InfWorld.Builder
 {
     class InstructionConverter
     {
-        public Dictionary<string, CSOpCode> opCode = new Dictionary<string, CSOpCode>()
+        public Dictionary<string, CSOpCode> OpCode = new Dictionary<string, CSOpCode>()
         {
             [MonoCecilOpCode.Add.Name] = CSOpCodes.Add,
             [MonoCecilOpCode.Add_Ovf.Name] = CSOpCodes.Add_Ovf,

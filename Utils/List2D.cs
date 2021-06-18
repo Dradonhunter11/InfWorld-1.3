@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
-using Microsoft.Xna.Framework;
+using InfWorld.Utils.Math;
 
-namespace InfWorld.Chunks
+namespace InfWorld.Utils
 {
 	/// <summary>
 	/// A 2-Dimensional List
@@ -17,7 +17,7 @@ namespace InfWorld.Chunks
 		/// <summary>
 		/// The inner dictionary, which contains all the values in this list
 		/// </summary>
-		private readonly Dictionary<Position2I, T> _list;
+		private readonly Dictionary<Position2I, T> m_list;
 
 		/// <summary>
 		/// The default value to return if there is nothing at the specified index.
@@ -27,14 +27,14 @@ namespace InfWorld.Chunks
 		/// <summary>
 		/// The amount of values in this list
 		/// </summary>
-		public int Count => _list.Count;
+		public int Count => m_list.Count;
 
 		/// <summary>
 		/// Initializes a new instance of this class
 		/// </summary>
 		public List2D()
 		{
-			_list = new Dictionary<Position2I, T>();
+			m_list = new Dictionary<Position2I, T>();
             Default = default(T);
 		}
 
@@ -76,9 +76,9 @@ namespace InfWorld.Chunks
 			get
 			{
 				var key = new Position2I(x, y);
-				if (!_list.ContainsKey(key))
+				if (!m_list.ContainsKey(key))
 					return Default;
-				return _list[key];
+				return m_list[key];
 			}
 			set
 			{
@@ -86,11 +86,11 @@ namespace InfWorld.Chunks
 				bool isDefault = IsDefault(value);
 				if (isDefault)
 				{
-					if (_list.ContainsKey(key))
-						_list.Remove(key);
+					if (m_list.ContainsKey(key))
+						m_list.Remove(key);
 				}
 				else
-					_list[key] = value;
+					m_list[key] = value;
 			}
 		}
 
@@ -120,7 +120,7 @@ namespace InfWorld.Chunks
 		/// <returns>The internal value array</returns>
 		public T[] GetValueArray()
 		{
-			return _list.Values.ToArray();
+			return m_list.Values.ToArray();
 		}
 
 		/// <summary>
@@ -129,7 +129,7 @@ namespace InfWorld.Chunks
 		/// <returns>The internal position array</returns>
 		public Position2I[] GetPositionArray()
 		{
-			return _list.Keys.ToArray();
+			return m_list.Keys.ToArray();
 		}
 
 		/// <inheritdoc />
@@ -143,7 +143,7 @@ namespace InfWorld.Chunks
 				yield return new KeyValuePair<Position2I, T>(position, val);
 			}*/
 
-			return _list.GetEnumerator();
+			return m_list.GetEnumerator();
 		}
 
 		IEnumerator IEnumerable.GetEnumerator()
@@ -158,7 +158,7 @@ namespace InfWorld.Chunks
 			{
 				throw new ArgumentNullException("info");
 			}
-			info.AddValue("list", _list);
+			info.AddValue("list", m_list);
 		}
 	}
 }

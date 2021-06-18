@@ -18,7 +18,7 @@ namespace InfWorld.Patching
 {
     internal static class MassPatcher
     {
-        private const BindingFlags REQUIRED_FLAGS =
+        private const BindingFlags RequiredFlags =
             BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance |
             BindingFlags.Static | BindingFlags.DeclaredOnly;
 
@@ -46,7 +46,7 @@ namespace InfWorld.Patching
 
         private static void PatchMethod(Type typeInfo)
         {
-            MethodInfo[] array1 = typeInfo.GetMethods(REQUIRED_FLAGS);
+            MethodInfo[] array1 = typeInfo.GetMethods(RequiredFlags);
             for (int i1 = 0; i1 < array1.Length; i1++)
             {
                 try
@@ -85,11 +85,11 @@ namespace InfWorld.Patching
 
         private static List<TypeDefinition> _definitions = new List<TypeDefinition>();
 
-        internal static PropertyInfo indexerInfo = typeof(Chunks.World).GetProperty("Item",
+        internal static PropertyInfo IndexerInfo = typeof(World.World).GetProperty("Item",
             BindingFlags.Public | BindingFlags.Instance, null, typeof(Tile),
             new Type[] { typeof(Int32), typeof(Int32) }, null);
-        internal static MethodInfo getItem = indexerInfo.GetGetMethod();
-        internal static MethodInfo setItem = indexerInfo.GetSetMethod();
+        internal static MethodInfo GetItem = IndexerInfo.GetGetMethod();
+        internal static MethodInfo SetItem = IndexerInfo.GetSetMethod();
 
         internal static void IlEditing(ILContext il)
         {
@@ -124,7 +124,7 @@ namespace InfWorld.Patching
                         instruction.OpCode = OpCodes.Callvirt;
                         if (getItemReference == null)
                         {
-                            getItemReference = il.Import(getItem);
+                            getItemReference = il.Import(GetItem);
                         }
                         instruction.Operand = getItemReference;
 
@@ -134,7 +134,7 @@ namespace InfWorld.Patching
                         instruction.OpCode = OpCodes.Callvirt;
                         if (setItemReference == null)
                         {
-                            setItemReference = il.Import(setItem);
+                            setItemReference = il.Import(SetItem);
                         }
                         instruction.Operand = setItemReference;
                     }

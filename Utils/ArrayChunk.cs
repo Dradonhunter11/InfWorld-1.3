@@ -1,29 +1,30 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using InfWorld.Utils.Math;
 
-namespace InfWorld.Chunks
+namespace InfWorld.Utils
 {
 	public class ArrayChunk<T> : IEnumerable
 	{
 		/// <summary>
 		/// Return a T depending on the vector position
 		/// </summary>
-		private readonly Dictionary<Vector2Int, T[,]> dictionary;
+		private readonly Dictionary<Vector2Int, T[,]> m_dictionary;
 		/// <summary>
 		/// 
 		/// </summary>
-		private T Default;
+		private T m_default;
 
 		public ArrayChunk()
 		{
-			dictionary = new Dictionary<Vector2Int, T[,]>();
-			Default = default(T);
+			m_dictionary = new Dictionary<Vector2Int, T[,]>();
+			m_default = default(T);
 		}
 
 
 		public ArrayChunk(T def) : this()
 		{
-			Default = def;
+			m_default = def;
 		}
 
 		public T this[int x, int y]
@@ -31,11 +32,11 @@ namespace InfWorld.Chunks
 			get
 			{
 				Vector2Int chunkPos = new Vector2Int(x / 150, y / 150);
-				if (dictionary.ContainsKey(chunkPos))
+				if (m_dictionary.ContainsKey(chunkPos))
 				{
-					return dictionary[chunkPos][x % 150, y % 150];
+					return m_dictionary[chunkPos][x % 150, y % 150];
 				}
-				return Default;
+				return m_default;
 			}
 			set
 			{
@@ -52,9 +53,9 @@ namespace InfWorld.Chunks
 
 				if (!DoesExist(chunkPos))
 				{
-					dictionary[chunkPos] = new T[150, 150];
+					m_dictionary[chunkPos] = new T[150, 150];
 				}
-				dictionary[chunkPos][x % 150, y % 150] = value;
+				m_dictionary[chunkPos][x % 150, y % 150] = value;
 			}
 		}
 
@@ -62,17 +63,17 @@ namespace InfWorld.Chunks
 
 		private bool IsDefault(T value)
 		{
-			return (Default != null && Default.Equals(value)) || (Default == null || value == null);
+			return (m_default != null && m_default.Equals(value)) || (m_default == null || value == null);
 		}
 
 		private bool DoesExist(Vector2Int chunkPos)
 		{
-			return dictionary.ContainsKey(chunkPos);
+			return m_dictionary.ContainsKey(chunkPos);
 		}
 
 		public IEnumerator GetEnumerator()
 		{
-			return dictionary.GetEnumerator();
+			return m_dictionary.GetEnumerator();
 		}
 	}
 }

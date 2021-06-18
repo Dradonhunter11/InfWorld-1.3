@@ -1,12 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.Serialization;
-using System.Threading.Tasks;
+using InfWorld.Utils;
+using InfWorld.Utils.Math;
+using InfWorld.World.Region;
 using InfWorld.WorldGenerator.ChunkGenerator;
 using log4net;
 using Microsoft.Xna.Framework;
 using Terraria;
 
-namespace InfWorld.Chunks
+namespace InfWorld.World
 {
     /// <summary>
     /// Class containing everything about the world
@@ -14,27 +17,30 @@ namespace InfWorld.Chunks
     [Serializable]
     public class World : ISerializable
     {
-        private int ViewRange = 30;
-        private ChunkGenerator generator;
+        private int m_viewRange = 25;
+        private SurfaceChunkGenerator m_generator;
+        //private UndergroundChunkGenerator undergroundGenerator;
+
+        private List<SurfaceChunkGenerator> m_chunkGenerators;
 
         /// <summary>
         /// List of Chunks in the World
         /// </summary>
-        private readonly List2D<Chunk> _chunks;
+        private readonly List2D<Chunk> m_chunks;
 
         /// <summary>
         /// Initializes a new instance of this class
         /// </summary>
         public World()
         {
-            _chunks = new List2D<Chunk>();
-            generator = new ChunkGenerator(/*Main.rand.Next()*/);
+            m_chunks = new List2D<Chunk>();
+            m_generator = new SurfaceChunkGenerator(/*Main.rand.Next()*/);
         }
 
         public World(int seed)
         {
-            _chunks = new List2D<Chunk>();
-            generator = new ChunkGenerator(seed);
+            m_chunks = new List2D<Chunk>();
+            m_generator = new SurfaceChunkGenerator(seed);
         }
 
         /// <summary>
@@ -67,8 +73,8 @@ namespace InfWorld.Chunks
         /// <returns>The tile at the specified position</returns>
         public Tile this[int x, int y]
         {
-            get => FindChunk(x, y)[x % Chunk.ChunkWidth, y % Chunk.ChunkHeight];
-            set => FindChunk(x, y)[x % Chunk.ChunkWidth, y % Chunk.ChunkHeight] = value;
+            get => FindChunk(x / Chunk.ChunkWidth, y / Chunk.ChunkHeight)[x % Chunk.ChunkWidth, y % Chunk.ChunkHeight];
+            set => FindChunk(x / Chunk.ChunkWidth, y / Chunk.ChunkHeight)[x % Chunk.ChunkWidth, y % Chunk.ChunkHeight] = value;
         }
 
         /// <summary>
@@ -79,7 +85,7 @@ namespace InfWorld.Chunks
         /// <returns>The chunk at the specified tile position</returns>
         public Chunk GetChunkFromTilePos(int x, int y)
         {
-            return FindChunk(new Vector2(x / (float)Chunk.ChunkWidth, y / (float)Chunk.ChunkHeight));
+            return FindChunk(new Vector2(x, y));
         }
 
         /// <summary>
@@ -99,12 +105,12 @@ namespace InfWorld.Chunks
             {
                 throw new ArgumentNullException("info");
             }
-            info.AddValue("list", _chunks);
+            info.AddValue("list", m_chunks);
         }
 
         public Chunk FindChunk(Player player)
         {
-            return FindChunk(player.position / 16f);
+            return FindChunk(player.position / 16f / new Vector2(Chunk.ChunkWidth, Chunk.ChunkHeight));
         }
 
         public Chunk FindChunk(int x, int y)
@@ -114,18 +120,19 @@ namespace InfWorld.Chunks
 
         public Chunk FindChunk(Vector2 position)
         {
-            var intPost = new Position2I((int) Math.Floor(position.X / (float)Chunk.ChunkWidth),
-                (int) Math.Floor(position.Y / (float)Chunk.ChunkHeight));
-            if (_chunks[intPost] != null)
+            var intPost = new Position2I((int) position.X, (int)position.Y);
+            //LogManager.GetLogger("no").Debug(intPost);
+            //LogManager.GetLogger("no - the stacktrace").Debug(Environment.StackTrace);
+            if (m_chunks[intPost] != null)
             {
-                return _chunks[intPost];
+                return m_chunks[intPost];
             }
 
-            if (_chunks[intPost] == null)
+            if (m_chunks[intPost] == null)
             {
-                LogManager.GetLogger("no").Debug(_chunks.Count);
-                _chunks[intPost] = new Chunk(position, generator.Generate(intPost.X, intPost.Y));
-                return _chunks[intPost];
+                m_chunks[intPost] = new Chunk(intPost.ToVector2(), m_generator.Generate(intPost.X, intPost.Y));
+                InfWorld.Map.AddMapSection(m_chunks[intPost]);
+                return m_chunks[intPost];
             }
             /*for (int i = 0; i < _chunks.Count; i++)
             {
@@ -140,22 +147,24 @@ namespace InfWorld.Chunks
             return null;
         }
 
+
         public void Update(Player player)
         {
-            for (float x = (player.position.X / 16f) - ViewRange; x > (player.position.Y / 16f) - ViewRange; x++)
+            LogManager.GetLogger("NO AGAIN!!!").Debug(m_chunks.Count);
+            for (int x = (int) ((player.position.X / 16f) - m_viewRange); x > (player.position.X / 16f) + m_viewRange; x++)
             {
-                for (float y = (player.position.X / 16f) - ViewRange; y > (player.position.Y / 16f) - ViewRange; y++)
+                for (int y = (int) ((player.position.Y / 16f) - m_viewRange); y > (player.position.Y / 16f) + m_viewRange; y++)
                 {
                     Vector2 pos = new Vector2(x, y);
-                    Console.Write(pos);
-                    pos.X = (float)(Math.Floor(pos.X / Chunk.ChunkWidth) * Chunk.ChunkWidth);
-                    pos.Y = (float)(Math.Floor(pos.Y / Chunk.ChunkWidth) * Chunk.ChunkWidth);
-
-                    Chunk chunk = FindChunk(player.position);
+                    pos.X = (float)(Math.Floor(pos.X / Chunk.ChunkWidth));
+                    pos.Y = (float)(Math.Floor(pos.Y / Chunk.ChunkHeight));
+                    LogManager.GetLogger("Chunk").Debug(pos);
+                    Chunk chunk = FindChunk(pos);
                     if (chunk != null) continue;
 
-                    chunk = new Chunk(pos, generator.Generate((int)Math.Floor(pos.X), (int)Math.Floor(pos.Y)));
-                    _chunks[(int)Math.Floor(pos.X), (int)Math.Floor(pos.Y)] = chunk;
+                    chunk = new Chunk(pos, m_generator.Generate((int)Math.Floor(pos.X), (int)Math.Floor(pos.Y)));
+                    InfWorld.Map.AddMapSection(chunk);
+                    m_chunks[(int)Math.Floor(pos.X), (int)Math.Floor(pos.Y)] = chunk;
                 }
             }
         }

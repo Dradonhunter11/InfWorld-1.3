@@ -3,7 +3,7 @@ using System.Runtime.Serialization;
 using System.Security.Permissions;
 using Microsoft.Xna.Framework;
 
-namespace InfWorld.Chunks
+namespace InfWorld.Utils.Math
 {
 	/// <summary>
 	/// A class that holds an X and Y position
@@ -36,7 +36,7 @@ namespace InfWorld.Chunks
 		/// Create a new instance of this class from a vector
 		/// </summary>
 		/// <param name="vector">The vector to copy the position from</param>
-		public Position2I(double v, Vector2 vector) : this((int)Math.Round(vector.X), (int)Math.Round(vector.Y)) { }
+		public Position2I(Vector2 vector) : this((int)System.Math.Round(vector.X), (int)System.Math.Round(vector.Y)) { }
 
 		/// <summary>
 		/// Convert this instance to a Vector2
