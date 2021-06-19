@@ -150,7 +150,6 @@ namespace InfWorld.World
 
         public void Update(Player player)
         {
-            LogManager.GetLogger("NO AGAIN!!!").Debug(m_chunks.Count);
             for (int x = (int) ((player.position.X / 16f) - m_viewRange); x > (player.position.X / 16f) + m_viewRange; x++)
             {
                 for (int y = (int) ((player.position.Y / 16f) - m_viewRange); y > (player.position.Y / 16f) + m_viewRange; y++)

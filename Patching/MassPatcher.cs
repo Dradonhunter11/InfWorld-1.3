@@ -103,7 +103,6 @@ namespace InfWorld.Patching
                     MethodReference function = (MethodReference)instruction.Operand;
                     if (!function.Name.Contains(_blacklistLoadFnt[0]) && !function.Name.Contains(_blacklistLoadFnt[1]) && !function.Name.Contains(_blacklistLoadFnt[2]))
                     {
-                        InfWorld.Instance.Logger.Info("Loadfnt detected : " + function.Name);
                         HookEndpointManager.Modify(function.ResolveReflection(), new ILContext.Manipulator(IlEditing));
                     }
                 }
