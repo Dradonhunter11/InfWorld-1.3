@@ -11,6 +11,7 @@ using Terraria;
 
 namespace InfWorld.World
 {
+    // TODO : Abstract it for easier support of multiple world type
     /// <summary>
     /// Class containing everything about the world
     /// </summary>
@@ -18,15 +19,21 @@ namespace InfWorld.World
     public class World : ISerializable
     {
         private int m_viewRange = 25;
-        private SurfaceChunkGenerator m_generator;
         //private UndergroundChunkGenerator undergroundGenerator;
 
-        private List<SurfaceChunkGenerator> m_chunkGenerators;
+        /// <summary>
+        /// string = GeneratorName
+        /// Value = ChunkGenerator
+        /// </summary>
+        private Dictionary<string, ChunkGenerator> m_chunkGenerators;
 
         /// <summary>
         /// List of Chunks in the World
         /// </summary>
         private readonly List2D<Chunk> m_chunks;
+
+        private readonly int _worldseed;
+        public int Seed => _worldseed;
 
         /// <summary>
         /// Initializes a new instance of this class
@@ -34,13 +41,23 @@ namespace InfWorld.World
         public World()
         {
             m_chunks = new List2D<Chunk>();
-            m_generator = new SurfaceChunkGenerator(/*Main.rand.Next()*/);
+            m_chunkGenerators = new Dictionary<string, ChunkGenerator>()
+            {
+                ["Sky"] = new SkyChunkGenerator(_worldseed),
+                ["Surface"] = new SurfaceChunkGenerator(_worldseed),
+                ["Underground"] = new UndergroundChunkGenerator(_worldseed),
+                ["Underworld"] = new UnderworldChunkGenerator(_worldseed)
+            };
         }
 
         public World(int seed)
         {
             m_chunks = new List2D<Chunk>();
-            m_generator = new SurfaceChunkGenerator(seed);
+            m_chunkGenerators = new Dictionary<string, ChunkGenerator>()
+            {
+                ["sky"] = new SkyChunkGenerator(_worldseed),
+                ["surface"] = new SurfaceChunkGenerator(_worldseed)
+            };
         }
 
         /// <summary>
@@ -48,11 +65,11 @@ namespace InfWorld.World
         /// </summary>
         /// <param name="pos">World position</param>
         /// <returns>The tile at the specified position</returns>
-        /*public Tile this[Vector2 pos]
+        public Tile this[Vector2 pos]
         {
             get => this[new Position2I(pos)];
             set => this[new Position2I(pos)] = value;
-        }*/
+        }
 
         /// <summary>
         /// Gets a tile at the world position
@@ -120,9 +137,7 @@ namespace InfWorld.World
 
         public Chunk FindChunk(Vector2 position)
         {
-            var intPost = new Position2I((int) position.X, (int)position.Y);
-            //LogManager.GetLogger("no").Debug(intPost);
-            //LogManager.GetLogger("no - the stacktrace").Debug(Environment.StackTrace);
+            var intPost = new Position2I((int)position.X, (int)position.Y);
             if (m_chunks[intPost] != null)
             {
                 return m_chunks[intPost];
@@ -130,29 +145,20 @@ namespace InfWorld.World
 
             if (m_chunks[intPost] == null)
             {
-                m_chunks[intPost] = new Chunk(intPost.ToVector2(), m_generator.Generate(intPost.X, intPost.Y));
+                m_chunks[intPost] = new Chunk(intPost.ToVector2(), SelectChunkGenerator(intPost.Y).Generate(intPost.X, intPost.Y));
                 InfWorld.Map.AddMapSection(m_chunks[intPost]);
                 return m_chunks[intPost];
             }
-            /*for (int i = 0; i < _chunks.Count; i++)
-            {
-                Vector2 ppos = position;
-                Vector2 cpos = _chunks.GetAtIndex(i).Value.position;
-                Math.Floor(cpos / Chunk.ChunkWidth);
-                if (ppos.X < cpos.X || ppos.Y < cpos.Y || ppos.X > cpos.X + Chunk.ChunkWidth || ppos.Y > cpos.Y + Chunk.ChunkHeight) continue;
-                return _chunks.GetAtIndex(i).Value;
-            }*/
 
-            
             return null;
         }
 
 
         public void Update(Player player)
         {
-            for (int x = (int) ((player.position.X / 16f) - m_viewRange); x > (player.position.X / 16f) + m_viewRange; x++)
+            for (int x = (int)((player.position.X / 16f) - m_viewRange); x > (player.position.X / 16f) + m_viewRange; x++)
             {
-                for (int y = (int) ((player.position.Y / 16f) - m_viewRange); y > (player.position.Y / 16f) + m_viewRange; y++)
+                for (int y = (int)((player.position.Y / 16f) - m_viewRange); y > (player.position.Y / 16f) + m_viewRange; y++)
                 {
                     Vector2 pos = new Vector2(x, y);
                     pos.X = (float)(Math.Floor(pos.X / Chunk.ChunkWidth));
@@ -161,10 +167,25 @@ namespace InfWorld.World
                     Chunk chunk = FindChunk(pos);
                     if (chunk != null) continue;
 
-                    chunk = new Chunk(pos, m_generator.Generate((int)Math.Floor(pos.X), (int)Math.Floor(pos.Y)));
+                    chunk = new Chunk(pos, SelectChunkGenerator((int) pos.Y).Generate((int)Math.Floor(pos.X), (int)Math.Floor(pos.Y)));
                     InfWorld.Map.AddMapSection(chunk);
                     m_chunks[(int)Math.Floor(pos.X), (int)Math.Floor(pos.Y)] = chunk;
                 }
+            }
+        }
+
+        public ChunkGenerator SelectChunkGenerator(int yLevel)
+        {
+            switch (yLevel)
+            {
+                case 0:
+                    return m_chunkGenerators["Sky"];
+                case 1:
+                    return m_chunkGenerators["Surface"];
+                case 5:
+                    return m_chunkGenerators["Underworld"];
+                default:
+                    return m_chunkGenerators["Underground"];
             }
         }
     }

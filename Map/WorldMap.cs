@@ -10,6 +10,10 @@ using log4net;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Terraria;
+using Terraria.GameInput;
+using Terraria.Localization;
+using Terraria.Map;
+using static Terraria.Main;
 
 namespace InfWorld.Map
 {
@@ -22,6 +26,8 @@ namespace InfWorld.Map
         private List2D<WorldMapSection> m_mapSection;
 
         private readonly int renderMapDistance = 2;
+
+        public Delegate DrawPlayerHead;
 
         public bool HasChanged = true;
 
@@ -46,8 +52,6 @@ namespace InfWorld.Map
             int y1 = y - renderMapDistance;
             int x2 = x + renderMapDistance;
             int y2 = y + renderMapDistance;
-
-            
 
             m_texture = new RenderTarget2D(Main.graphics.GraphicsDevice, 800,
                 800);
@@ -86,8 +90,7 @@ namespace InfWorld.Map
             }
         }
 
-
-        public bool AddMapSection(Chunk chunk)
+		public bool AddMapSection(Chunk chunk)
         {
             Position2I position = chunk.Position.ToPosition2I();
             if (m_mapSection[position] != null)
@@ -130,7 +133,7 @@ namespace InfWorld.Map
             //Main.graphics.GraphicsDevice.ScissorRectangle = mapDrawingArea;
 
             Main.spriteBatch.Begin(SpriteSortMode.Deferred, BlendState.Additive);
-            Main.spriteBatch.Draw(m_texture, Vector2.Zero, null, Color.White * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 1f);
+            Main.spriteBatch.Draw(m_texture, new Vector2(positionX, 0), null, Color.White * 0.5f, 0f, Vector2.Zero, 0.5f, SpriteEffects.None, 1f);
             Main.spriteBatch.End();
 
             //Main.graphics.GraphicsDevice.ScissorRectangle = graphicDevice.Viewport.Bounds;
