@@ -33,7 +33,24 @@ namespace InfWorld.WorldGenerator.ChunkGenerator
             return newTileArray;
         }
 
-        public abstract Tile[,] Generate(int x, int y);
+        public abstract Tile[,] SetupTerrain(int x, int y);
+
+        internal Tile[,] Generate(int x, int y)
+        {
+            Tile[,] generate = SetupTerrain(x, y);
+            if (generate.GetLength(0) != Chunk.ChunkWidth || generate.GetLength(1) != Chunk.ChunkHeight)
+            {
+                throw new Exception(
+                    $"Tile array return by SetupTerrain does not match {Chunk.ChunkWidth}x{Chunk.ChunkHeight}");
+            }
+
+            foreach (var worldFeatureGenerator in FeatureGenerators)
+            {
+                worldFeatureGenerator.Apply(generate, x, y);
+            }
+
+            return generate;
+        }
 
         public ChunkGenerator(int seed = 1337)
         {

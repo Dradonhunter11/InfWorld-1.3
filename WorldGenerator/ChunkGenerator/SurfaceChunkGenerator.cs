@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using InfWorld.Utils.Math;
 using InfWorld.World;
 using InfWorld.World.Region;
+using InfWorld.WorldGenerator.FeatureGenerator;
+using InfWorld.WorldGenerator.FeatureGenerator.Caves;
 using Terraria.ID;
 using Terraria;
 using log4net;
@@ -20,14 +22,15 @@ namespace InfWorld.WorldGenerator.ChunkGenerator
         public SurfaceChunkGenerator(int seed = 1337) : base(1337)
         {
             _noise = new FastNoise(seed);
+            FeatureGenerators.Add(new SurfaceCarverWorldFeatureGenerator(seed));
         }
 
         public static int[] GetPerlinDisplacements(int displacementCount, float frequency, int maxLimit, float multiplier, int seed, int startingPosition = 0)
         {
-            FastNoise noise = new FastNoise(SurfaceChunkGenerator._noise.GetSeed());
+            FastNoise noise = new FastNoise(InfWorld.Tile.Seed);
             noise.SetNoiseType(FastNoise.NoiseType.Perlin);
             noise.SetFrequency(frequency);
-            noise.SetFractalType(FastNoise.FractalType.RigidMulti);
+            noise.SetFractalType(FastNoise.FractalType.Ridged);
 
             int[] displacements = new int[displacementCount];
             int startPosition = startingPosition * Chunk.ChunkWidth;
@@ -42,14 +45,14 @@ namespace InfWorld.WorldGenerator.ChunkGenerator
             return displacements;
         }
 
-        public override Tile[,] Generate(int x1, int y1)
+        public override Tile[,] SetupTerrain(int x1, int y1)
         {
             //LogManager.GetLogger("NO AGAIN").Debug(x1 + ", " + y1);
 
             Tile[,] chunkBase = new Tile[Chunk.ChunkWidth, Chunk.ChunkHeight];
 
             
-            float[] frequency = new float[] { 0.0077f, 0.0011f, 0.022f, 0.04f };
+            float[] frequency = new float[] { 0.0077f, 0.0011f, 0.08f, 0.04f };
             float[] limit = new float[] { 0.07f, 0.5f, 0.02f, 0.001f };
             int[][] displacements = new int[frequency.Length][];
 

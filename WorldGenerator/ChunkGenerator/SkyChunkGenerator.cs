@@ -15,7 +15,7 @@ namespace InfWorld.WorldGenerator.ChunkGenerator
             
         }
 
-        public override Tile[,] Generate(int x, int y)
+        public override Tile[,] SetupTerrain(int x, int y)
         {
             return GetNewTileArray();
         }
