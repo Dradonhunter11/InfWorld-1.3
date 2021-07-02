@@ -22,7 +22,7 @@ namespace InfWorld.World.Region
 
 
 		public bool Loaded = false;
-        public bool Generated = false;
+        public bool PartiallyGenerated = false;
 
 		/// <summary>
 		/// The list of tiles

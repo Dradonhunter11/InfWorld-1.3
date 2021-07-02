@@ -153,7 +153,6 @@ namespace InfWorld.World
             return null;
         }
 
-
         public void Update(Player player)
         {
             for (int x = (int)((player.position.X / 16f) - m_viewRange); x > (player.position.X / 16f) + m_viewRange; x++)
