@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Security.Permissions;
 using InfWorld.Utils.Math;
+using MonoMod.Utils;
 
 namespace InfWorld.Utils
 {
@@ -146,10 +147,49 @@ namespace InfWorld.Utils
 			return m_list.GetEnumerator();
 		}
 
+        public T Remove(int x, int y)
+        {
+            return Remove(new Position2I(x, y));
+        }
+
+        public T Remove(Position2I position)
+        {
+            T obj = m_list[position];
+            if (m_list.Remove(position))
+            {
+                return obj;
+            }
+
+            return default(T);
+            //throw new ArgumentOutOfRangeException($"Element could not be removed from List2D<{typeof(T).Name}>");
+        }
+
+        public bool TryRemove(int x, int y, out T output)
+        {
+            return TryRemove(new Position2I(x, y), out output);
+        }
+
+        public bool TryRemove(Position2I position, out T output)
+        {
+            output = Remove(position);
+            if (!IsDefault(output))
+            {
+                return true;
+            }
+            return false;
+        }
+
 		IEnumerator IEnumerable.GetEnumerator()
 		{
 			return GetEnumerator();
 		}
+
+        public List2D<T> Clone()
+        {
+            List2D<T> clonedList = new List2D<T>();
+            clonedList.m_list.AddRange(m_list);
+            return clonedList;
+        }
 
 		[SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.SerializationFormatter)]
 		public void GetObjectData(SerializationInfo info, StreamingContext context)
