@@ -42,7 +42,7 @@ namespace InfWorld.WorldGenerator.FeatureGenerator.Caves
                     float noiseValue = (float)(caveNoise.GetNoise((startingPositionX + i), (startingPositionY + j)) * ((y == 1) ? 0.9d : 1.6d));
                     if (noiseValue >= 0.5f)
                     {
-                        tileArray[i, j].active(false);
+                        tileArray[i, j].IsActive = (false);
                     }
                 }
             }

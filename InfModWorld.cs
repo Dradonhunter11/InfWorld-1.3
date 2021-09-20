@@ -12,17 +12,16 @@ using Terraria.ModLoader.IO;
 
 namespace InfWorld
 {
-    class InfModWorld : ModWorld
+    class InfModWorld : ModSystem
     {
         public bool ThreadRunning = false;
 
-        public override void Load(TagCompound tag)
+        public override void Load()
         {
-            base.Load(tag);
-            //InfWorld.Tile = new World();
+            InfWorld.Tile = new World.World();
         }
 
-        public override void PreUpdate()
+        public override void PreUpdateWorld()
         {
             if(Main.netMode != NetmodeID.Server)
                 InfWorld.Map.PreRender((int)(Main.LocalPlayer.position.X / 16f / Chunk.ChunkWidth), (int)(Main.LocalPlayer.position.Y / 16f / Chunk.ChunkHeight));
@@ -38,7 +37,7 @@ namespace InfWorld
                         InfWorld.Tile.Update(Main.LocalPlayer);
 
                         Thread.Sleep(50);
-                        if (Main.graphics.GraphicsDevice.IsDisposed || Main.instance.Window.Handle == IntPtr.Zero)
+                        if (Main.graphics.GraphicsDevice.IsDisposed)
                         {
                             ThreadRunning = false;
                         }

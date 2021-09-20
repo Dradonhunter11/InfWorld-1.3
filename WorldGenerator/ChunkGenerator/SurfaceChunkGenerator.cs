@@ -75,7 +75,7 @@ namespace InfWorld.WorldGenerator.ChunkGenerator
                 for (int y = 0; y < Chunk.ChunkHeight; y++)
                 {
                     Tile tile = new Tile();
-                    tile.active(false);
+                    tile.IsActive = (false);
                     chunkBase[x, y] = tile;
                 }
             }
@@ -95,7 +95,7 @@ namespace InfWorld.WorldGenerator.ChunkGenerator
             {
                 if(i < 0 || x < 0 || i >= 200 || x >= Chunk.ChunkWidth) continue;
                 tileArray[x, i] = new Tile();
-                tileArray[x, i].active(true);
+                tileArray[x, i].IsActive = true;
                 tileArray[x, i].type = TileID.Dirt;
             }
         }

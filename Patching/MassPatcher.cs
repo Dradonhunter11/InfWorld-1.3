@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
+using System.Runtime;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using log4net;
 using Mono.Cecil;
@@ -30,20 +32,27 @@ namespace InfWorld.Patching
         public static void StartPatching(Assembly asm)
         {
             List<Task> tasks = new List<Task>();
-            ILog log = LogManager.GetLogger("Mass Patcher");
 
             Type[] array = asm.GetTypes();
             SetLoadingStatusText("Currently patching " + asm.FullName, 0);
             for (int i = 0; i < array.Length; i++)
             {
+                
                 Type type = array[i];
+                if(type.FullName != null && type.FullName.Contains("Terraria.GameContent.UI.")) continue;
+                if(type.FullName != null && type.FullName.Contains("Terraria.Initializers.UILinksInitializer")) continue;
+                if (type.FullName != null && type.FullName.Contains("Terraria.Initializers.UILinksInitializer")) continue;
+                if (type.FullName != null && !type.FullName.Contains("Terraria")) continue;
+                if (type.FullName != null && type.FullName.Contains("System.")) continue;
+                if (type.FullName != null && type.FullName.Contains("Native") || type.FullName.Contains("native")) continue;
+
+                PatchMethod(type);
                 Task task = Task.Run(() => PatchMethod(type));
                 tasks.Add(task);
             }
-
             Task.WaitAll(tasks.ToArray());
         }
-
+        
         private static void PatchMethod(Type typeInfo)
         {
             MethodInfo[] array1 = typeInfo.GetMethods(RequiredFlags);
@@ -52,16 +61,19 @@ namespace InfWorld.Patching
                 try
                 {
                     MethodInfo methodInfo = array1[i1];
-                    if (methodInfo.Name == "do_playWorldCallBack")
+                    var declaringType = methodInfo.GetType().DeclaringType;
+                    if(declaringType is not null && !declaringType.Name.Contains("Terraria")) 
+                        continue;
+                    if(methodInfo.IsAbstract)
+                        continue;
+                    if (methodInfo.Name == "do_playWorldCallBack" || methodInfo.Name.Contains("GetEnumerator") || methodInfo.Name.Contains("OpenPort"))
                         continue;
                     HookEndpointManager.Modify(methodInfo, new ILContext.Manipulator(IlEditing));
-                    if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("MONOMOD_DMD_TYPE")))
-                    {
-                        InfWorld.DisableMonoModDumps();
-                    }
                 }
                 catch (Exception e)
                 {
+                    InfWorld.Instance.Logger.Debug(typeInfo.FullName + " " + array1[i1].Name + " Error");
+                    InfWorld.Instance.Logger.Error(e.Message, e);
                 }
             }
         }
@@ -80,7 +92,10 @@ namespace InfWorld.Patching
             {
                 "FinishPlayWorld",
                 "OnDisconnect",
-                "DoClientSizeChanged"
+                "DoClientSizeChanged",
+                "SetMonitorOnce",
+                "ResolveRule",
+                "OnLobbyEntered"
             };
 
         private static List<TypeDefinition> _definitions = new List<TypeDefinition>();
@@ -101,7 +116,7 @@ namespace InfWorld.Patching
                 if (instruction.OpCode == OpCodes.Ldftn)
                 {
                     MethodReference function = (MethodReference)instruction.Operand;
-                    if (!function.Name.Contains(_blacklistLoadFnt[0]) && !function.Name.Contains(_blacklistLoadFnt[1]) && !function.Name.Contains(_blacklistLoadFnt[2]))
+                    if (!function.Name.Contains(_blacklistLoadFnt[0]) && !function.Name.Contains(_blacklistLoadFnt[1]) && !function.Name.Contains(_blacklistLoadFnt[2]) && !function.Name.Contains(_blacklistLoadFnt[3]) && !function.Name.Contains(_blacklistLoadFnt[4]) && !function.Name.Contains(_blacklistLoadFnt[5]))
                     {
                         HookEndpointManager.Modify(function.ResolveReflection(), new ILContext.Manipulator(IlEditing));
                     }
@@ -116,7 +131,18 @@ namespace InfWorld.Patching
                         instruction.Operand = tileReference;
                     }
                 }
-                else if (instruction.OpCode == OpCodes.Call && instruction.Operand is Mono.Cecil.MethodReference reference)
+                else if (instruction.OpCode == OpCodes.Ldfld)
+                {
+                    if (instruction.Operand is FieldReference fieldRef && fieldRef.FieldType.FullName.Contains("World"))
+                    {
+                        instruction.OpCode = OpCodes.Ldsfld;
+                        FieldReference tileReference =
+                            il.Module.ImportReference(typeof(InfWorld).GetField("Tile",
+                                BindingFlags.Public | BindingFlags.Static));
+                        instruction.Operand = tileReference;
+                    }
+                }
+                else if ((instruction.OpCode == OpCodes.Call || instruction.OpCode == OpCodes.Callvirt) && instruction.Operand is Mono.Cecil.MethodReference reference)
                 {
                     if (reference.FullName == ("Terraria.Tile Terraria.Tile[0...,0...]::Get(System.Int32,System.Int32)"))
                     {
@@ -129,6 +155,24 @@ namespace InfWorld.Patching
 
                     }
                     else if (reference.FullName == ("System.Void Terraria.Tile[0...,0...]::Set(System.Int32,System.Int32,Terraria.Tile)"))
+                    {
+                        instruction.OpCode = OpCodes.Callvirt;
+                        if (setItemReference == null)
+                        {
+                            setItemReference = il.Import(SetItem);
+                        }
+                        instruction.Operand = setItemReference;
+                    }
+                    else if (reference.FullName.Contains("Terraria.Tile[0..., 0...] Terraria.World::get_Tiles()"))
+                    {
+                        instruction.OpCode = OpCodes.Callvirt;
+                        if (setItemReference == null)
+                        {
+                            setItemReference = il.Import(GetItem);
+                        }
+                        instruction.Operand = setItemReference;
+                    }
+                    else if (reference.FullName.Contains("Terraria.Tile[0..., 0...] Terraria.World::set_Tiles(System.Int32,System.Int32,Terraria.Tile)"))
                     {
                         instruction.OpCode = OpCodes.Callvirt;
                         if (setItemReference == null)

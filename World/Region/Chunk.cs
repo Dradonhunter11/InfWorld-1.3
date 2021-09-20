@@ -51,7 +51,7 @@ namespace InfWorld.World.Region
                     if (m_tiles[i, j] == null)
                     {
                         m_tiles[i, j] = new Tile();
-                        m_tiles[i, j].active(false);
+                        m_tiles[i, j].IsActive = false;
 
                     }
                 }

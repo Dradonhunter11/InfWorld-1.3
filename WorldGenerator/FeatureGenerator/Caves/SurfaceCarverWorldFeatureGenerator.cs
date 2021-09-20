@@ -37,9 +37,9 @@ namespace InfWorld.WorldGenerator.FeatureGenerator.Caves
                 for (int j = 0; j < Chunk.ChunkHeight; j++)
                 {
                     float noiseValue = (float)(caveNoise.GetNoise((startingPositionX + i), (startingPositionY + j)));
-                    if (noiseValue >= 0.1f && tileArray[i, j].active())
+                    if (noiseValue >= 0.1f && tileArray[i, j].IsActive)
                     {
-                        tileArray[i, j].active(false);
+                        tileArray[i, j].IsActive = false;
                         tileArray[i, j].wall = WallID.Dirt;
                     }
                 }

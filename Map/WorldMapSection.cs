@@ -90,14 +90,14 @@ namespace InfWorld.Map
                 return 255;
             }
 
-            if (tile.active())
+            if (tile.IsActive)
             {
-                return tile.color();
+                return tile.Color;
             }
 
             if (tile.wall > 0)
             {
-                return tile.wallColor();
+                return tile.WallColor;
             }
 
             return 0;
@@ -114,7 +114,7 @@ namespace InfWorld.Map
 			
 			int num3 = 0;
 			int num4 = 0;
-			if (tile.active())
+			if (tile.IsActive)
 			{
 				int type2 = tile.type;
 				num3 = tileLookup[type2];
@@ -123,7 +123,7 @@ namespace InfWorld.Map
 
 				if (num3 != 0)
 				{
-					num = ((type2 != 160) ? tile.color() : 0);
+					num = ((type2 != 160) ? tile.Color : 0);
 					switch (type2)
 					{
 						case 4:
@@ -428,7 +428,7 @@ namespace InfWorld.Map
 				{
 					int wall = tile.wall;
 					num3 = wallLookup[wall];
-					num = tile.wallColor();
+					num = tile.WallColor;
 					switch (wall)
 					{
 						case 21:

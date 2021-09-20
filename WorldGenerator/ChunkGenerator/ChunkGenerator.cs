@@ -24,7 +24,7 @@ namespace InfWorld.WorldGenerator.ChunkGenerator
                 {
                     newTileArray[i, j] = new Tile();
                     newTileArray[i, j].type = (ushort) ((tileType == -1) ? 0 : tileType);
-                    newTileArray[i, j].active(tileType != -1);
+                    newTileArray[i, j].IsActive = (tileType != -1);
                     newTileArray[i, j].frameX = 0;
                     newTileArray[i, j].frameY = 0;
                 }

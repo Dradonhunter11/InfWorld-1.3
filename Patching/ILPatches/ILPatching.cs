@@ -16,6 +16,50 @@ namespace InfWorld.Patching.ILPatches
         public static void Load()
         {
             Console.SetOut(new EmptyWriter());
+            IL.Terraria.WorldGen.PlaceTile += il =>
+            {
+                var cursor = new ILCursor(il);
+                Instruction jumpPoint = null;
+                if (cursor.TryGotoNext(i => i.MatchLdsfld(out _),
+                    i => i.MatchLdarg(0),
+                    i => i.MatchLdarg(1)))
+                {
+                    jumpPoint = cursor.Next;
+                    cursor.Index = 0;
+                    cursor.Emit(OpCodes.Br, jumpPoint);
+                }
+            };
+
+            IL.Terraria.Main.DrawTiles += il =>
+            {
+                var cursor = new ILCursor(il);
+
+                Instruction jumpPoint = null;
+
+                if (cursor.TryGotoNext(
+                    i => i.MatchLdsfld(out _),
+                    i => i.MatchCallvirt(out _),
+                    i => i.MatchLdcI4(out _),
+                    i => i.MatchBle(out _)))
+                {
+                    jumpPoint = cursor.Next;
+                }
+
+                cursor.Index = 0;
+                if (jumpPoint == null)
+                {
+                    InfWorld.Instance.Logger.Error("Jump point not found");
+                }
+
+                if (cursor.TryGotoNext(i => i.MatchLdloc(out _),
+                    i => i.MatchLdcI4(out _),
+                    i => i.MatchBge(out _)))
+                {
+                    cursor.Emit(OpCodes.Br, jumpPoint);
+                }
+            };
+            return;
+
 
             IL.Terraria.WorldGen.TileRunner += il =>
             {
@@ -45,47 +89,8 @@ namespace InfWorld.Patching.ILPatches
                     cursor.Emit(OpCodes.Br, jumpPoint);
                 }
             };
-            IL.Terraria.Main.DrawTiles += il =>
-            {
-                var cursor = new ILCursor(il);
-
-                Instruction jumpPoint = null;
-
-                if (cursor.TryGotoNext(
-                    i => i.MatchLdsfld(out _),
-                    i => i.MatchCallvirt(out _),
-                    i => i.MatchLdcI4(out _),
-                    i => i.MatchBle(out _)))
-                {
-                    jumpPoint = cursor.Next;
-                }
-
-                cursor.Index = 0;
-                if (jumpPoint == null)
-                {
-                    InfWorld.Instance.Logger.Error("Jump point not found");
-                }
-
-                if (cursor.TryGotoNext(i => i.MatchLdloc(out _),
-                    i => i.MatchLdcI4(out _),
-                    i => i.MatchBge(out _)))
-                {
-                    cursor.Emit(OpCodes.Br, jumpPoint);
-                }
-            };
-            IL.Terraria.WorldGen.PlaceTile += il =>
-            {
-                var cursor = new ILCursor(il);
-                Instruction jumpPoint = null;
-                if (cursor.TryGotoNext(i => i.MatchLdsfld(out _),
-                    i => i.MatchLdarg(0),
-                    i => i.MatchLdarg(1)))
-                {
-                    jumpPoint = cursor.Next;
-                    cursor.Index = 0;
-                    cursor.Emit(OpCodes.Br, jumpPoint);
-                }
-            };
+            
+            
             IL.Terraria.Projectile.VanillaAI += il =>
             {
                 var cursor = new ILCursor(il);
@@ -159,9 +164,9 @@ namespace InfWorld.Patching.ILPatches
             {
                 var cursor = new ILCursor(il);
 
-                if (cursor.TryGotoNext(i => i.MatchRet()))
+                if (cursor.TryGotoNext(i => i.MatchBrfalse(out _)))
                 {
-                    var jumpPoint = cursor.Next.Next;
+                    var jumpPoint = cursor.Next.Next.Next;
                     cursor.Index = 0;
                     cursor.Emit(OpCodes.Br, jumpPoint);
                 }
@@ -170,12 +175,12 @@ namespace InfWorld.Patching.ILPatches
             {
                 var cursor = new ILCursor(il);
 
-                if (cursor.TryGotoNext(i => i.MatchRet()))
+                if (cursor.TryGotoNext(i => i.MatchBrfalse(out _)))
                 {
                     ILog log = LogManager.GetLogger("VanillaAI debug");
                     log.Debug("Entrypoint found");
                     log.Debug($"Current instruction : [{cursor.Previous.Offset}] {cursor.Previous.OpCode.Name} {cursor.Previous.Operand}");
-                    var jumpPoint = cursor.Next.Next;
+                    var jumpPoint = cursor.Next.Next.Next;
                     cursor.Index = 0;
                     cursor.Emit(OpCodes.Br, jumpPoint);
                 }
@@ -184,11 +189,15 @@ namespace InfWorld.Patching.ILPatches
             {
                 var cursor = new ILCursor(il);
 
-                if (cursor.TryGotoNext(i => i.MatchRet()))
+                cursor.TryGotoNext(i => i.MatchStindI());
+
+                int cursorIndex = cursor.Index;
+
+                if (cursor.TryGotoNext(i => i.MatchBrfalse(out _)))
                 {
                     ILog log = LogManager.GetLogger("VanillaAI debug");
-                    var jumpPoint = cursor.Next.Next;
-                    cursor.Index = 3;
+                    var jumpPoint = cursor.Next.Next.Next.Next;
+                    cursor.Index = cursorIndex;
                     cursor.Emit(OpCodes.Br, jumpPoint);
                 }
             };
@@ -254,7 +263,7 @@ namespace InfWorld.Patching.ILPatches
             //IL.Terraria.Lighting.GetBlackness += PatchLightingCheck;
             //IL.Terraria.Lighting.Brightness += PatchLightingCheck;
             //IL.Terraria.Lighting.GetColor4Slice += PatchLightingCheck;
-            IL.Terraria.Lighting.AddLight_int_int_float_float_float += il =>
+            /*IL.Terraria.Lighting.AddLight_int_int_float_float_float += il =>
             {
                 var cursor = new ILCursor(il);
                 if (cursor.TryGotoNext(i => i.MatchLdarg(out _)))
@@ -296,7 +305,7 @@ namespace InfWorld.Patching.ILPatches
                         cursor.Index = afterPoint + 1;
                     }
                 }
-            };
+            };*/
         }
 
         internal static void PatchLightingCheck(ILContext context)

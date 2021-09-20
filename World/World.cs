@@ -189,7 +189,7 @@ namespace InfWorld.World
                     for (int j = 0; j < tiles.GetLength(1); j++)
                     {
                         Tile tile = partialChunkTileList[i, j];
-                        if (tiles[i, j].active())
+                        if (tiles[i, j].IsActive)
                         {
                             tiles[i, j] = tile;
                         }

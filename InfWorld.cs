@@ -26,7 +26,7 @@ using Terraria.IO;
 using Terraria.Localization;
 using Terraria.ModLoader;
 using Terraria.Utilities;
-using Terraria.World.Generation;
+using Terraria.WorldBuilding;
 using WorldGen = Terraria.WorldGen;
 using static Terraria.WorldGen;
 using TypeAttributes = Mono.Cecil.TypeAttributes;
@@ -47,31 +47,24 @@ namespace InfWorld
             {
                 //throw new Exception("Infinite world cannot be loaded on 32bit tML, pls use the 64bit version of tML to load this mod.");
             }
-            DirectoryInfo di = new DirectoryInfo("MonoModDump");
+            /*DirectoryInfo di = new DirectoryInfo("MonoModDump");
             if (di.Exists)
             {
                 foreach (var fileInfo in di.GetFiles())
                 {
                     fileInfo.Delete();
                 }
-            }
+            }*/
             Instance = this;
             Patching.Detours.Detours.Load();
-            IlPatching.Load();
+            //IlPatching.Load();
             MassPatcher.StartPatching(typeof(Main));
-            InitMonoModDumps();
-            DisableMonoModDumps();
-            foreach (var mod in ModLoader.Mods)
+            /*foreach (var mod in ModLoader.Mods)
             {
                 if (mod.Name == "ModLoader" || mod.Name == "InfWorld")
                     continue;
                 MassPatcher.StartPatching(mod.GetType().Assembly);
-            }
-
-            Main.instance.Exiting += (sender, args) =>
-            {
-                Environment.Exit(0);
-            };
+            }*/
         }
 
         public override void PostAddRecipes()

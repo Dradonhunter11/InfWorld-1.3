@@ -62,16 +62,16 @@ namespace InfWorld.WorldGenerator.FeatureGenerator.WorldGen
             int startingPositionX = x * Chunk.ChunkWidth;
             int startingPositionY = y * Chunk.ChunkHeight;
 
-            Terraria.WorldGen.TileRunner(x + 195, y + 195, 15, 5, TileID.AdamantiteBeam, true, 1f, -1f);
+            //Terraria.WorldGen.TileRunner(x + 195, y + 195, 15, 5, TileID.AdamantiteBeam, true, 1f, -1f);
 
-            return true;
+            
 
             for (int i = 0; i < Chunk.ChunkWidth; i++)
             {
                 for (int j = 0; j < Chunk.ChunkHeight; j++)
                 {
                     float noiseValue = (float)(caveNoise.GetNoise((startingPositionX + i), (startingPositionY + j)) * ((y == 1) ? 0.9d : 1.6d));
-                    if (noiseValue >= 0.7f && tileArray[i, j].active())
+                    if (noiseValue >= 0.7f && tileArray[i, j].IsActive)
                     {
                         int oreToGen = GetPossibleToGenBasedOnNoise((startingPositionX + i), (startingPositionY + j));
                         if (oreToGen == -1)

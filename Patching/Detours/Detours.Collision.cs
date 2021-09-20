@@ -15,7 +15,7 @@ namespace InfWorld.Patching.Detours
             return true;
         }
 
-        private static bool OnSolidTiles(On.Terraria.Collision.orig_SolidTiles orig, int x, int endX, int y, int endY)
+        /*private static bool OnSolidTiles(On.Terraria.Collision.orig_SolidTiles orig, int x, int endX, int y, int endY)
         {
             for (int i = x; i < endX + 1; i++)
             {
@@ -28,18 +28,18 @@ namespace InfWorld.Patching.Detours
             }
 
             return false;
-        }
+        }*/
 
-        private static bool CustomSolidCollision(On.Terraria.Collision.orig_SolidCollision orig, Vector2 position, int width, int height)
+        /*private static bool CustomSolidCollision(On.Terraria.Collision.orig_SolidCollision orig, Vector2 position, int width, int height)
         {
             int value = (int)(position.X / 16f) - 1;
             int value2 = (int)((position.X + (float)width) / 16f) + 2;
             int value3 = (int)(position.Y / 16f) - 1;
             int value4 = (int)((position.Y + (float)height) / 16f) + 2;
-            /*int num = Utils.Clamp(value, 0, Main.maxTilesX - 1);
+            int num = Utils.Clamp(value, 0, Main.maxTilesX - 1);
                 value2 = Utils.Clamp(value2, 0, Main.maxTilesX - 1);
                 value3 = Utils.Clamp(value3, 0, Main.maxTilesY - 1);
-                value4 = Utils.Clamp(value4, 0, Main.maxTilesY - 1);*/
+                value4 = Utils.Clamp(value4, 0, Main.maxTilesY - 1);
             Vector2 vector = default(Vector2);
             for (int i = value; i < value2; i++)
             {
@@ -62,6 +62,6 @@ namespace InfWorld.Patching.Detours
             }
 
             return false;
-        }
+        }*/
     }
 }

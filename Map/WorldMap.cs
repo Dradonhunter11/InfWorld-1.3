@@ -10,6 +10,7 @@ using log4net;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Terraria;
+using Terraria.GameContent;
 using Terraria.GameInput;
 using Terraria.Localization;
 using Terraria.Map;
@@ -126,8 +127,8 @@ namespace InfWorld.Map
             const int width = 200;
             const int height = 200;
 
-            int positionX = graphicDevice.Viewport.Width - 5 - Main.manaTexture.Width - width - 70;
-            int positionY = 5 + Main.heart2Texture.Height + 10;
+            int positionX = graphicDevice.Viewport.Width - 5 - TextureAssets.Mana.Width() - width - 70;
+            int positionY = 5 + TextureAssets.Heart2.Height() + 10;
             
             Rectangle mapDrawingArea = new Rectangle(positionX, positionY, width, height);
             //Main.graphics.GraphicsDevice.ScissorRectangle = mapDrawingArea;
