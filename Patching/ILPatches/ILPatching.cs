@@ -17,6 +17,34 @@ namespace InfWorld.Patching.ILPatches
         {
             Console.SetOut(new EmptyWriter());
 
+            IL.Terraria.WorldGen.TileRunner += il =>
+            {
+                var cursor = new ILCursor(il);
+
+                Instruction jumpPoint = null;
+
+                if (cursor.TryGotoNext(
+                    i => i.MatchLdloc(out _),
+                    i => i.MatchStloc(out _),
+                    i => i.MatchBr(out _),
+                    i => i.MatchLdloc(out _)))
+                {
+                    jumpPoint = cursor.Next;
+                }
+
+                cursor.Index = 0;
+                if (jumpPoint == null)
+                {
+                    InfWorld.Instance.Logger.Error("Jump point not found");
+                }
+
+                if (cursor.TryGotoNext(i => i.MatchLdloc(out _),
+                    i => i.MatchLdcI4(out _),
+                    i => i.MatchBge(out _)))
+                {
+                    cursor.Emit(OpCodes.Br, jumpPoint);
+                }
+            };
             IL.Terraria.Main.DrawTiles += il =>
             {
                 var cursor = new ILCursor(il);
@@ -159,9 +187,6 @@ namespace InfWorld.Patching.ILPatches
                 if (cursor.TryGotoNext(i => i.MatchRet()))
                 {
                     ILog log = LogManager.GetLogger("VanillaAI debug");
-                    log.Debug("Entrypoint found");
-                    log.Debug(
-                        $"Current instruction : [{cursor.Previous.Offset}] {cursor.Previous.OpCode.Name} {cursor.Previous.Operand}");
                     var jumpPoint = cursor.Next.Next;
                     cursor.Index = 3;
                     cursor.Emit(OpCodes.Br, jumpPoint);
@@ -178,7 +203,6 @@ namespace InfWorld.Patching.ILPatches
                     i => i.MatchSub(),
                     i => i.MatchBlt(out _)))
                 {
-                    LogManager.GetLogger("Update Player").Debug("Entrypoint found!");
                     indexCursor = cursor.Index;
                     if (cursor.TryGotoNext(
                         i => i.MatchLdsfld(out _),
@@ -198,19 +222,14 @@ namespace InfWorld.Patching.ILPatches
                         });
                         cursor.Index += 4;
 
-                        LogManager.GetLogger("Update Player").Debug($"Current instruction : [{cursor.Next.OpCode.Name}] {cursor.Next.OpCode.Name} {cursor.Next.Operand}");
                         cursor.Index = indexCursor;
                         cursor.Emit(OpCodes.Br, jumpPoint);
-                        LogManager.GetLogger("Update Player").Debug($"Jumppoint instruction : [{jumpPoint.OpCode.Code}] {jumpPoint.OpCode.Name} {jumpPoint.Operand}");
-                        LogManager.GetLogger("Update Player").Debug($"Current instruction : [{cursor.Next.OpCode.Code}] {cursor.Next.OpCode.Name} {cursor.Next.Operand}");
-                        LogManager.GetLogger("Update Player").Debug("Success!");
 
                     }
                 }
             };
             IL.Terraria.Main.DrawBlack += il =>
             {
-                return;
                 var cursor = new ILCursor(il);
                 if (cursor.TryGotoNext(i => i.MatchLdloc(out _),
                     i => i.MatchLdcI4(out _),

@@ -35,9 +35,13 @@ namespace InfWorld.WorldGenerator.ChunkGenerator
 
         public abstract Tile[,] SetupTerrain(int x, int y);
 
-        internal Tile[,] Generate(int x, int y)
+        internal Tile[,] Generate(int x, int y, bool disableTerrain = false)
         {
-            Tile[,] generate = SetupTerrain(x, y);
+            Tile[,] generate;
+            if (!disableTerrain)
+                generate = SetupTerrain(x, y);
+            else
+                generate = GetNewTileArray();
             if (generate.GetLength(0) != Chunk.ChunkWidth || generate.GetLength(1) != Chunk.ChunkHeight)
             {
                 throw new Exception(

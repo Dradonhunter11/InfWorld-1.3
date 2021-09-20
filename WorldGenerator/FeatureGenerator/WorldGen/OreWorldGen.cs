@@ -61,6 +61,11 @@ namespace InfWorld.WorldGenerator.FeatureGenerator.WorldGen
         {
             int startingPositionX = x * Chunk.ChunkWidth;
             int startingPositionY = y * Chunk.ChunkHeight;
+
+            Terraria.WorldGen.TileRunner(x + 195, y + 195, 15, 5, TileID.AdamantiteBeam, true, 1f, -1f);
+
+            return true;
+
             for (int i = 0; i < Chunk.ChunkWidth; i++)
             {
                 for (int j = 0; j < Chunk.ChunkHeight; j++)

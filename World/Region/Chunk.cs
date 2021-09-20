@@ -18,10 +18,17 @@ namespace InfWorld.World.Region
 		/// </summary>
 		public static readonly int ChunkWidth = 200;
         public static readonly int ChunkHeight = 200;
+        public long chunkSeed;
         public Vector2 Position;
 
-
+		/// <summary>
+		/// If this is set to true, it will be fully loaded in memory
+		/// </summary>
 		public bool Loaded = false;
+		/// <summary>
+		/// Indicate that a chunk as been received world gen action in the past, but without being fully generated
+		/// This is to prevent infinite world gen loop 
+		/// </summary>
         public bool PartiallyGenerated = false;
 
 		/// <summary>
@@ -49,6 +56,11 @@ namespace InfWorld.World.Region
                     }
                 }
             }
+        }
+
+        internal List2D<Tile> GetTileArrayCopy()
+        {
+            return m_tiles;
         }
 
         /// <summary>
