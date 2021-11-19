@@ -15,6 +15,15 @@ using MonoMod.RuntimeDetour.HookGen;
 using MonoMod.Utils;
 using Terraria;
 using Terraria.ModLoader;
+using EOpCode = System.Reflection.Emit.OpCode;
+using EOpCodes = System.Reflection.Emit.OpCodes;
+using COpCodes = Mono.Cecil.Cil.OpCodes;
+using CStackBehaviour = Mono.Cecil.Cil.StackBehaviour;
+using InfWorld.Utils;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using System.Collections;
+using System.IO;
 
 namespace InfWorld.Patching
 {
@@ -31,51 +40,137 @@ namespace InfWorld.Patching
 
         public static void StartPatching(Assembly asm)
         {
-            List<Task> tasks = new List<Task>();
-
             Type[] array = asm.GetTypes();
             SetLoadingStatusText("Currently patching " + asm.FullName, 0);
-            for (int i = 0; i < array.Length; i++)
-            {
-                
-                Type type = array[i];
-                if(type.FullName != null && type.FullName.Contains("Terraria.GameContent.UI.")) continue;
-                if(type.FullName != null && type.FullName.Contains("Terraria.Initializers.UILinksInitializer")) continue;
-                if (type.FullName != null && type.FullName.Contains("Terraria.Initializers.UILinksInitializer")) continue;
-                if (type.FullName != null && !type.FullName.Contains("Terraria")) continue;
-                if (type.FullName != null && type.FullName.Contains("System.")) continue;
-                if (type.FullName != null && type.FullName.Contains("Native") || type.FullName.Contains("native")) continue;
 
-                PatchMethod(type);
-                Task task = Task.Run(() => PatchMethod(type));
-                tasks.Add(task);
-            }
-            Task.WaitAll(tasks.ToArray());
-        }
-        
-        private static void PatchMethod(Type typeInfo)
-        {
-            MethodInfo[] array1 = typeInfo.GetMethods(RequiredFlags);
-            for (int i1 = 0; i1 < array1.Length; i1++)
+            // removing blacklisted types from the array
+            int typeCount = array.Length;
+
+            var inspectedMethods = new HashSet<MethodBase>();
+
+            var toPatch = new List<MethodBase>(2048);
+            var patchQueue = new List<MethodBase>();
+            object addLock = new object();
+
+            for (int i = 0; i < typeCount; i++)
             {
-                try
+                foreach (MethodInfo method in array[i].GetMethods(RequiredFlags))
                 {
-                    MethodInfo methodInfo = array1[i1];
-                    var declaringType = methodInfo.GetType().DeclaringType;
-                    if(declaringType is not null && !declaringType.Name.Contains("Terraria")) 
-                        continue;
-                    if(methodInfo.IsAbstract)
-                        continue;
-                    if (methodInfo.Name == "do_playWorldCallBack" || methodInfo.Name.Contains("GetEnumerator") || methodInfo.Name.Contains("OpenPort"))
-                        continue;
-                    HookEndpointManager.Modify(methodInfo, new ILContext.Manipulator(IlEditing));
-                }
-                catch (Exception e)
-                {
-                    InfWorld.Instance.Logger.Debug(typeInfo.FullName + " " + array1[i1].Name + " Error");
-                    InfWorld.Instance.Logger.Error(e.Message, e);
+                    toPatch.Add(method);
+                    inspectedMethods.Add(method);
                 }
             }
+
+            void TryQueueMethod(MethodBase method)
+            {
+                lock (addLock)
+                {
+                    if (!inspectedMethods.Contains(method))
+                    {
+                        patchQueue.Add(method);
+                        inspectedMethods.Add(method);
+                    }
+                }
+            }
+            void DoPatch(MethodBase method)
+            {
+                PatchMethod(method, TryQueueMethod);
+            }
+
+            while(toPatch.Count > 0)
+            {
+                //toPatch.Sort((a, b) => (a.DeclaringType.FullName + ':' + a.Name).CompareTo(b.DeclaringType.FullName + ':' + b.Name));
+                //foreach (var n in toPatch)
+                //    DoPatch(n);
+                Parallel.For(0, toPatch.Count, i=>DoPatch(toPatch[i]));
+                toPatch.Clear();
+                lock (addLock)
+                {
+                    // swap
+                    var temp = patchQueue;
+                    patchQueue = toPatch;
+                    toPatch = temp;
+                }
+            }
+        }
+
+        private static bool PatchMethod(MethodBase method, Action<MethodBase> onFindLdftn)
+        {
+            try
+            {
+                if (InspectForPatch(method, onFindLdftn))
+                {
+                    HookEndpointManager.Modify(method, new ILContext.Manipulator(IlEditing));
+                    return true;
+                }
+            }
+            catch (Exception e)
+            {
+                InfWorld.Instance.Logger.Debug(method.DeclaringType.FullName + " " + method.Name + " Error");
+                InfWorld.Instance.Logger.Error(e.Message, e);
+            }
+            return false;
+        }
+
+        static FieldInfo tileField = typeof(Main).GetField(nameof(Main.tile));
+        static MethodBase tileArraySetter = typeof(Tile[,]).GetMethod("Set");
+        static MethodBase tileArrayGetter = typeof(Tile[,]).GetMethod("Get");
+
+        private static bool InspectForPatch(MethodBase method, Action<MethodBase> onFindLdftn)
+        {
+            if (method.IsAbstract)
+                return false;
+
+            byte[] ilBytes = method.GetMethodBody()?.GetILAsByteArray();
+            if (ilBytes is null || ilBytes.Length <
+                + 1 + 4 // ldsfld Main::tile
+                + 1) // ret
+                return false;
+
+            var reader = new MethodOpCodeReader(ilBytes, method.Module);
+            bool candidate = false;
+
+            // inspect the instructions
+            try
+            {
+                while (reader.MoveNext())
+                {
+                    var p = reader.Current;
+
+                    var opcode = p.Key;
+                    var operand = p.Value;
+                    object operandObj;
+
+                    if (opcode == EOpCodes.Ldftn && onFindLdftn != null)
+                    {
+                        if (operand.TryResolve(out operandObj))
+                        {
+                            onFindLdftn((MethodBase)operandObj);
+                        }
+                    }
+                    else if (candidate) // let it inspect only ldftns
+                    {
+                        if (onFindLdftn == null) break; 
+                        continue;
+                    }
+                    else if (opcode == EOpCodes.Ldsfld)
+                    {
+                        if (operand.TryResolve(out operandObj) && operandObj is FieldInfo f && f == tileField)
+                            candidate = true;
+                    }
+                    else if ((opcode == EOpCodes.Call || opcode == EOpCodes.Callvirt) && operand.TryResolve(out operandObj) && operandObj is MethodBase methodBase)
+                    {
+                        if (methodBase == tileArraySetter || methodBase == tileArrayGetter) 
+                            candidate = true;
+                    }
+                }
+            }
+            finally
+            {
+                reader.Dispose();
+            }
+
+            return candidate;
         }
 
         private static void PatchModLoader(ILContext context)
@@ -87,7 +182,7 @@ namespace InfWorld.Patching
             });
         }
 
-        
+
         private static List<string> _blacklistLoadFnt = new List<string>()
             {
                 "FinishPlayWorld",
@@ -106,6 +201,95 @@ namespace InfWorld.Patching
         internal static MethodInfo GetItem = IndexerInfo.GetGetMethod();
         internal static MethodInfo SetItem = IndexerInfo.GetSetMethod();
 
+        internal static void IlEditing2(ILContext il)
+        {
+            MethodReference getItemReference = null;
+            MethodReference setItemReference = null;
+
+            foreach (var instruction in il.Body.Instructions)
+            {
+                /*if (instruction.OpCode == OpCodes.Ldftn) // ldftns are checked on the body inspector
+                {
+                    MethodReference function = (MethodReference)instruction.Operand;
+                    if (!function.Name.Contains(_blacklistLoadFnt[0]) && !function.Name.Contains(_blacklistLoadFnt[1]) && !function.Name.Contains(_blacklistLoadFnt[2]) && !function.Name.Contains(_blacklistLoadFnt[3]) && !function.Name.Contains(_blacklistLoadFnt[4]) && !function.Name.Contains(_blacklistLoadFnt[5]))
+                    {
+                        HookEndpointManager.Modify(function.ResolveReflection(), new ILContext.Manipulator(IlEditing));
+                    }
+                }*/
+                //else 
+                if (instruction.OpCode == COpCodes.Ldsfld)
+                {
+                    if (instruction.Operand is FieldReference fieldRef && fieldRef.DeclaringType.FullName == "Terraria.Main" && fieldRef.Name == "tile")
+                    {
+                        FieldReference tileReference =
+                            il.Module.ImportReference(typeof(InfWorld).GetField("Tile",
+                                BindingFlags.Public | BindingFlags.Static));
+                        instruction.Operand = tileReference;
+                    }
+                }
+                else if (instruction.OpCode == COpCodes.Ldfld)
+                {
+                    if (instruction.Operand is FieldReference fieldRef && fieldRef.FullName == "Terraria.World")
+                    {
+                        instruction.OpCode = COpCodes.Ldsfld;
+                        FieldReference tileReference =
+                            il.Module.ImportReference(typeof(InfWorld).GetField("Tile",
+                                BindingFlags.Public | BindingFlags.Static));
+                        instruction.Operand = tileReference;
+                    }
+                }
+                else if ((instruction.OpCode == COpCodes.Call || instruction.OpCode == COpCodes.Callvirt) && instruction.Operand is Mono.Cecil.MethodReference reference)
+                {
+                    if (reference.FullName == ("Terraria.Tile Terraria.Tile[0...,0...]::Get(System.Int32,System.Int32)"))
+                    {
+                        instruction.OpCode = COpCodes.Callvirt;
+                        if (getItemReference == null)
+                        {
+                            getItemReference = il.Import(GetItem);
+                        }
+                        instruction.Operand = getItemReference;
+
+                    }
+                    else if (reference.FullName == ("System.Void Terraria.Tile[0...,0...]::Set(System.Int32,System.Int32,Terraria.Tile)"))
+                    {
+                        instruction.OpCode = COpCodes.Callvirt;
+                        if (setItemReference == null)
+                        {
+                            setItemReference = il.Import(SetItem);
+                        }
+                        instruction.Operand = setItemReference;
+                    }
+                    else if (reference.FullName == "Terraria.Tile[0..., 0...] Terraria.World::get_Tiles()")
+                    {
+                        instruction.OpCode = COpCodes.Callvirt;
+                        if (setItemReference == null)
+                        {
+                            setItemReference = il.Import(GetItem);
+                        }
+                        instruction.Operand = setItemReference;
+                    }
+                    else if (reference.FullName.Contains("Terraria.Tile[0..., 0...] Terraria.World::set_Tiles(System.Int32,System.Int32,Terraria.Tile)"))
+                    {
+                        instruction.OpCode = COpCodes.Callvirt;
+                        if (setItemReference == null)
+                        {
+                            setItemReference = il.Import(SetItem);
+                        }
+                        instruction.Operand = setItemReference;
+                    }
+                }
+            }
+            //string path = Path.Combine(Main.SavePath, "ILDump");
+            //if (!Directory.Exists(path))
+            //    Directory.CreateDirectory(path);
+            //string name = il.Method.FullName.Replace('<', '_').Replace('>', '_').Replace(':', '_').Replace('?', '_').Replace('(', '_').Replace(')', '_').Replace('[', '_').Replace(']', '_');
+            //using (FileStream n = File.Open(path + '.' + name + ".dll", FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            //{
+            //    il.Module.Write(n);
+            //}
+
+        }
+
         internal static void IlEditing(ILContext il)
         {
             MethodReference getItemReference = null;
@@ -113,15 +297,16 @@ namespace InfWorld.Patching
 
             foreach (var instruction in il.Body.Instructions)
             {
-                if (instruction.OpCode == OpCodes.Ldftn)
+                /*if (instruction.OpCode == OpCodes.Ldftn) // ldftns are checked on the body inspector
                 {
                     MethodReference function = (MethodReference)instruction.Operand;
                     if (!function.Name.Contains(_blacklistLoadFnt[0]) && !function.Name.Contains(_blacklistLoadFnt[1]) && !function.Name.Contains(_blacklistLoadFnt[2]) && !function.Name.Contains(_blacklistLoadFnt[3]) && !function.Name.Contains(_blacklistLoadFnt[4]) && !function.Name.Contains(_blacklistLoadFnt[5]))
                     {
                         HookEndpointManager.Modify(function.ResolveReflection(), new ILContext.Manipulator(IlEditing));
                     }
-                }
-                else if (instruction.OpCode == OpCodes.Ldsfld)
+                }*/
+                //else 
+                if (instruction.OpCode == OpCodes.Ldsfld)
                 {
                     if (instruction.Operand is FieldReference fieldRef && fieldRef.DeclaringType.FullName == "Terraria.Main" && fieldRef.Name == "tile")
                     {
@@ -133,7 +318,7 @@ namespace InfWorld.Patching
                 }
                 else if (instruction.OpCode == OpCodes.Ldfld)
                 {
-                    if (instruction.Operand is FieldReference fieldRef && fieldRef.FieldType.FullName.Contains("World"))
+                    if (instruction.Operand is FieldReference fieldRef && fieldRef.FullName == "Terraria.World") 
                     {
                         instruction.OpCode = OpCodes.Ldsfld;
                         FieldReference tileReference =
@@ -142,7 +327,7 @@ namespace InfWorld.Patching
                         instruction.Operand = tileReference;
                     }
                 }
-                else if ((instruction.OpCode == OpCodes.Call || instruction.OpCode == OpCodes.Callvirt) && instruction.Operand is Mono.Cecil.MethodReference reference)
+                else if ((instruction.OpCode == OpCodes.Call || instruction.OpCode == OpCodes.Callvirt) && instruction.Operand is Mono.Cecil.MethodReference reference)
                 {
                     if (reference.FullName == ("Terraria.Tile Terraria.Tile[0...,0...]::Get(System.Int32,System.Int32)"))
                     {
@@ -163,7 +348,7 @@ namespace InfWorld.Patching
                         }
                         instruction.Operand = setItemReference;
                     }
-                    else if (reference.FullName.Contains("Terraria.Tile[0..., 0...] Terraria.World::get_Tiles()"))
+                    else if (reference.FullName == "Terraria.Tile[0..., 0...] Terraria.World::get_Tiles()")
                     {
                         instruction.OpCode = OpCodes.Callvirt;
                         if (setItemReference == null)
@@ -183,21 +368,39 @@ namespace InfWorld.Patching
                     }
                 }
             }
+            //string path = Path.Combine(Main.SavePath, "ILDump");
+            //if (!Directory.Exists(path))
+            //    Directory.CreateDirectory(path);
+            //string name = il.Method.FullName.Replace('<', '_').Replace('>', '_').Replace(':', '_').Replace('?', '_').Replace('(', '_').Replace(')', '_').Replace('[', '_').Replace(']', '_');
+            //using (FileStream n = File.Open(path + '.' + name + ".dll", FileMode.OpenOrCreate, FileAccess.ReadWrite))
+            //{
+            //    il.Module.Write(n);
+            //}
+
         }
 
+        private static Action<string, int> setLoadStageDelegate;
         public static void SetLoadingStatusText(string statusText, int percent)
         {
+            if(setLoadStageDelegate != null)
+            {
+                setLoadStageDelegate(statusText, percent);
+                return;
+            }
             Assembly assembly = Assembly.GetAssembly(typeof(Mod));
 
-            var type = assembly.GetType("Terraria.ModLoader.UI.Interface");
+            Type type = assembly.GetType("Terraria.ModLoader.UI.Interface");
             FieldInfo loadModsField = type.GetField("loadMods", BindingFlags.Static | BindingFlags.NonPublic);
-            var loadModsValue = loadModsField.GetValue(null);
+            object loadModsValue = loadModsField.GetValue(null);
 
             Type uiLoadModsType = assembly.GetType("Terraria.ModLoader.UI.UILoadMods");
 
             MethodInfo setLoadStageMethod = uiLoadModsType.GetMethod("SetLoadStage", BindingFlags.Instance | BindingFlags.Public);
 
-            setLoadStageMethod.Invoke(loadModsValue, new object[] { statusText, -1 });
+            setLoadStageDelegate = setLoadStageMethod.CreateDelegate<Action<string, int>>(loadModsValue);
+
+            setLoadStageDelegate(statusText, -1);
+            //setLoadStageMethod.Invoke(loadModsValue, new object[] { statusText, -1 });
         }
     }
 
